@@ -13,6 +13,236 @@ export const toolList = [
       required: ["guildId", "name"]
     }
   },
+  // Emojis
+  {
+    name: "discord_list_emojis",
+    description: "List server emojis",
+    inputSchema: { type: "object", properties: { guildId: { type: "string" } }, required: ["guildId"] }
+  },
+  {
+    name: "discord_create_emoji",
+    description: "Create a custom emoji from an image URL",
+    inputSchema: { type: "object", properties: { guildId: { type: "string" }, name: { type: "string" }, imageUrl: { type: "string" }, reason: { type: "string" } }, required: ["guildId", "name", "imageUrl"] }
+  },
+  {
+    name: "discord_delete_emoji",
+    description: "Delete a custom emoji",
+    inputSchema: { type: "object", properties: { guildId: { type: "string" }, emojiId: { type: "string" }, reason: { type: "string" } }, required: ["guildId", "emojiId"] }
+  },
+  // Roles list
+  {
+    name: "discord_list_roles",
+    description: "List all roles in a server",
+    inputSchema: { type: "object", properties: { guildId: { type: "string" } }, required: ["guildId"] }
+  },
+  // Channel extras
+  {
+    name: "discord_set_slowmode",
+    description: "Set channel slowmode in seconds",
+    inputSchema: {
+      type: "object",
+      properties: { channelId: { type: "string" }, rateLimitPerUserSeconds: { type: "number" }, reason: { type: "string" } },
+      required: ["channelId", "rateLimitPerUserSeconds"]
+    }
+  },
+  {
+    name: "discord_lock_channel",
+    description: "Deny @everyone from sending messages",
+    inputSchema: {
+      type: "object",
+      properties: { channelId: { type: "string" }, reason: { type: "string" } },
+      required: ["channelId"]
+    }
+  },
+  {
+    name: "discord_unlock_channel",
+    description: "Restore @everyone default send messages permission",
+    inputSchema: {
+      type: "object",
+      properties: { channelId: { type: "string" }, reason: { type: "string" } },
+      required: ["channelId"]
+    }
+  },
+  // Pins
+  {
+    name: "discord_pin_message",
+    description: "Pin a message in a channel",
+    inputSchema: {
+      type: "object",
+      properties: { channelId: { type: "string" }, messageId: { type: "string" } },
+      required: ["channelId", "messageId"]
+    }
+  },
+  {
+    name: "discord_unpin_message",
+    description: "Unpin a message in a channel",
+    inputSchema: {
+      type: "object",
+      properties: { channelId: { type: "string" }, messageId: { type: "string" } },
+      required: ["channelId", "messageId"]
+    }
+  },
+  // Softban
+  {
+    name: "discord_softban_member",
+    description: "Ban then immediately unban to purge messages",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, userId: { type: "string" }, deleteMessageDays: { type: "number" }, reason: { type: "string" } },
+      required: ["guildId", "userId"]
+    }
+  },
+  // DMs
+  {
+    name: "discord_dm_member",
+    description: "Send a direct message to a user",
+    inputSchema: {
+      type: "object",
+      properties: { userId: { type: "string" }, message: { type: "string" } },
+      required: ["userId", "message"]
+    }
+  },
+  // Channel invites and vanity
+  {
+    name: "discord_get_channel_invites",
+    description: "List invites for a specific channel",
+    inputSchema: {
+      type: "object",
+      properties: { channelId: { type: "string" } },
+      required: ["channelId"]
+    }
+  },
+  {
+    name: "discord_get_vanity_url",
+    description: "Get server vanity URL if available",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" } },
+      required: ["guildId"]
+    }
+  },
+  // Voice operations
+  {
+    name: "discord_disconnect_voice",
+    description: "Disconnects a member from their current voice channel",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, userId: { type: "string" }, reason: { type: "string" } },
+      required: ["guildId", "userId"]
+    }
+  },
+  {
+    name: "discord_move_voice",
+    description: "Moves a member to a specific voice channel",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, userId: { type: "string" }, channelId: { type: "string" }, reason: { type: "string" } },
+      required: ["guildId", "userId", "channelId"]
+    }
+  },
+  {
+    name: "discord_voice_mute",
+    description: "Server mute or unmute a member in voice",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, userId: { type: "string" }, mute: { type: "boolean" }, reason: { type: "string" } },
+      required: ["guildId", "userId", "mute"]
+    }
+  },
+  {
+    name: "discord_voice_deafen",
+    description: "Server deafen or undeafen a member in voice",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, userId: { type: "string" }, deafen: { type: "boolean" }, reason: { type: "string" } },
+      required: ["guildId", "userId", "deafen"]
+    }
+  },
+  // Member info
+  {
+    name: "discord_get_member_info",
+    description: "Gets detailed member data",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, userId: { type: "string" } },
+      required: ["guildId", "userId"]
+    }
+  },
+  {
+    name: "discord_list_members",
+    description: "Lists members in a server, with optional limit and query",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, limit: { type: "number" }, query: { type: "string" } },
+      required: ["guildId"]
+    }
+  },
+  // Moderation extras
+  {
+    name: "discord_remove_timeout",
+    description: "Removes an active timeout from a member",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, userId: { type: "string" }, reason: { type: "string" } },
+      required: ["guildId", "userId"]
+    }
+  },
+  {
+    name: "discord_bulk_delete",
+    description: "Bulk delete recent messages with optional filters",
+    inputSchema: {
+      type: "object",
+      properties: { channelId: { type: "string" }, count: { type: "number" }, filterUserId: { type: "string" }, filterContains: { type: "string" }, reason: { type: "string" } },
+      required: ["channelId", "count"]
+    }
+  },
+  {
+    name: "discord_set_nickname",
+    description: "Set or clear a member nickname",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, userId: { type: "string" }, nickname: { type: "string" }, reason: { type: "string" } },
+      required: ["guildId", "userId"]
+    }
+  },
+  {
+    name: "discord_get_bans",
+    description: "List banned users",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" } },
+      required: ["guildId"]
+    }
+  },
+  // Invites
+  {
+    name: "discord_create_invite",
+    description: "Create an invite link for a channel",
+    inputSchema: {
+      type: "object",
+      properties: { channelId: { type: "string" }, maxAgeSeconds: { type: "number" }, maxUses: { type: "number" }, temporary: { type: "boolean" }, reason: { type: "string" } },
+      required: ["channelId"]
+    }
+  },
+  {
+    name: "discord_get_invites",
+    description: "List server invites",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" } },
+      required: ["guildId"]
+    }
+  },
+  // Audit logs
+  {
+    name: "discord_get_audit_logs",
+    description: "Fetch server audit logs",
+    inputSchema: {
+      type: "object",
+      properties: { guildId: { type: "string" }, limit: { type: "number" }, actionType: { type: "number" }, userId: { type: "string" } },
+      required: ["guildId"]
+    }
+  },
   {
     name: "discord_edit_category",
     description: "Edits an existing Discord category (name and position).",
@@ -300,6 +530,165 @@ export const toolList = [
       type: "object",
       properties: {},
       required: []
+    }
+  },
+  // Moderation tools
+  {
+    name: "discord_kick_member",
+    description: "Kicks a member from a guild",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        userId: { type: "string" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "userId"]
+    }
+  },
+  {
+    name: "discord_ban_member",
+    description: "Bans a member from a guild",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        userId: { type: "string" },
+        deleteMessageDays: { type: "number" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "userId"]
+    }
+  },
+  {
+    name: "discord_unban_member",
+    description: "Unbans a user in a guild",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        userId: { type: "string" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "userId"]
+    }
+  },
+  {
+    name: "discord_timeout_member",
+    description: "Timeouts a member for a duration in minutes",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        userId: { type: "string" },
+        durationMinutes: { type: "number" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "userId", "durationMinutes"]
+    }
+  },
+  {
+    name: "discord_disconnect_member",
+    description: "Disconnects a member from their current voice channel",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        userId: { type: "string" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "userId"]
+    }
+  },
+  {
+    name: "discord_move_member",
+    description: "Moves a member to a specific voice channel",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        userId: { type: "string" },
+        channelId: { type: "string" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "userId", "channelId"]
+    }
+  },
+  // Role tools
+  {
+    name: "discord_add_role",
+    description: "Adds a role to a member",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        userId: { type: "string" },
+        roleId: { type: "string" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "userId", "roleId"]
+    }
+  },
+  {
+    name: "discord_remove_role",
+    description: "Removes a role from a member",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        userId: { type: "string" },
+        roleId: { type: "string" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "userId", "roleId"]
+    }
+  },
+  {
+    name: "discord_create_role",
+    description: "Creates a role in a guild",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        name: { type: "string" },
+        color: { type: "string" },
+        hoist: { type: "boolean" },
+        mentionable: { type: "boolean" },
+        permissions: { type: "array", items: { type: "string" } },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "name"]
+    }
+  },
+  {
+    name: "discord_edit_role",
+    description: "Edits a role in a guild",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        roleId: { type: "string" },
+        name: { type: "string" },
+        color: { type: "string" },
+        hoist: { type: "boolean" },
+        mentionable: { type: "boolean" },
+        permissions: { type: "array", items: { type: "string" } },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "roleId"]
+    }
+  },
+  {
+    name: "discord_delete_role",
+    description: "Deletes a role in a guild",
+    inputSchema: {
+      type: "object",
+      properties: {
+        guildId: { type: "string" },
+        roleId: { type: "string" },
+        reason: { type: "string" }
+      },
+      required: ["guildId", "roleId"]
     }
   }
 ]; 

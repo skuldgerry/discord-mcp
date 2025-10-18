@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import { config as dotenvConfig } from 'dotenv';
 import { DiscordMCPServer } from './server.js';
 import { StdioTransport, StreamableHttpTransport } from './transport.js';
@@ -56,11 +56,22 @@ const config = {
 
 // Create Discord client
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,        // NEW: For member management
+    GatewayIntentBits.GuildBans,           // NEW: For ban management
+    GatewayIntentBits.GuildVoiceStates,    // NEW: For voice operations
+    GatewayIntentBits.GuildPresences,      // NEW: For member status
+    GatewayIntentBits.GuildInvites,        // NEW: For invite management
+    GatewayIntentBits.GuildModeration      // NEW: For audit logs
+  ],
+  partials: [
+    Partials.Channel,
+    Partials.GuildMember,
+    Partials.User
+  ]
 });
 
 // Save token to client for login handler

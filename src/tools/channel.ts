@@ -12,6 +12,7 @@ import {
   ListServersSchema
 } from "../schemas.js";
 import { handleDiscordError } from "../errorHandler.js";
+import { SetSlowmodeSchema, LockChannelSchema, UnlockChannelSchema } from "../schemas.js";
 
   // Category creation handler
 export async function createCategoryHandler(
@@ -393,3 +394,68 @@ export async function listServersHandler(
     return handleDiscordError(error);
   }
 } 
+
+// Set channel slowmode
+export async function setSlowmodeHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const { channelId, rateLimitPerUserSeconds, reason } = SetSlowmodeSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return { content: [{ type: "text", text: "Discord client not logged in." }], isError: true };
+    }
+    const channel = await context.client.channels.fetch(channelId);
+    if (!channel || !('rateLimitPerUser' in channel) || !('edit' in channel)) {
+      return { content: [{ type: "text", text: `Channel type does not support slowmode: ${channelId}` }], isError: true };
+    }
+    await (channel as any).edit({ rateLimitPerUser: rateLimitPerUserSeconds, reason });
+    return { content: [{ type: "text", text: `Set slowmode to ${rateLimitPerUserSeconds}s for ${channelId}` }] };
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
+// Lock channel (deny @everyone SEND_MESSAGES)
+export async function lockChannelHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const { channelId, reason } = LockChannelSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return { content: [{ type: "text", text: "Discord client not logged in." }], isError: true };
+    }
+    const channel = await context.client.channels.fetch(channelId);
+    if (!channel || !('permissionOverwrites' in channel)) {
+      return { content: [{ type: "text", text: `Channel not found or cannot set overwrites: ${channelId}` }], isError: true };
+    }
+    const everyone = (channel as any).guild.roles.everyone;
+    await (channel as any).permissionOverwrites.edit(everyone, { SendMessages: false }, { reason });
+    return { content: [{ type: "text", text: `Locked channel ${channelId}` }] };
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
+// Unlock channel (allow @everyone SEND_MESSAGES)
+export async function unlockChannelHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const { channelId, reason } = UnlockChannelSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return { content: [{ type: "text", text: "Discord client not logged in." }], isError: true };
+    }
+    const channel = await context.client.channels.fetch(channelId);
+    if (!channel || !('permissionOverwrites' in channel)) {
+      return { content: [{ type: "text", text: `Channel not found or cannot set overwrites: ${channelId}` }], isError: true };
+    }
+    const everyone = (channel as any).guild.roles.everyone;
+    await (channel as any).permissionOverwrites.edit(everyone, { SendMessages: null }, { reason });
+    return { content: [{ type: "text", text: `Unlocked channel ${channelId}` }] };
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}

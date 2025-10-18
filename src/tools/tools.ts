@@ -18,7 +18,10 @@ import {
   createCategoryHandler,
   editCategoryHandler,
   deleteCategoryHandler,
-  listServersHandler
+  listServersHandler,
+  setSlowmodeHandler,
+  lockChannelHandler,
+  unlockChannelHandler
 } from './channel.js';
 import {
   addReactionHandler,
@@ -32,6 +35,48 @@ import {
   editWebhookHandler,
   deleteWebhookHandler
 } from './webhooks.js';
+import {
+  kickMemberHandler,
+  banMemberHandler,
+  unbanMemberHandler,
+  timeoutMemberHandler,
+  disconnectMemberHandler,
+  moveMemberHandler,
+  removeTimeoutHandler,
+  bulkDeleteMessagesHandler,
+  setNicknameHandler,
+  getBansHandler,
+  softbanMemberHandler,
+  pinMessageHandler,
+  unpinMessageHandler
+} from './moderation.js';
+import {
+  addRoleToMemberHandler,
+  removeRoleFromMemberHandler,
+  createRoleHandler,
+  editRoleHandler,
+  deleteRoleHandler
+} from './roles.js';
+import { listRolesHandler } from './roles.js';
+import {
+  disconnectVoiceHandler,
+  moveVoiceHandler,
+  voiceMuteHandler,
+  voiceDeafenHandler
+} from './voice.js';
+import {
+  getMemberInfoHandler,
+  listMembersHandler,
+  dmMemberHandler
+} from './members.js';
+import {
+  createInviteHandler,
+  getInvitesHandler,
+  getChannelInvitesHandler,
+  getVanityUrlHandler
+} from './invites.js';
+import { getAuditLogsHandler } from './audit.js';
+import { listEmojisHandler, createEmojiHandler, deleteEmojiHandler } from './emojis.js';
 
 // Export tool handlers
 export {
@@ -57,7 +102,52 @@ export {
   createCategoryHandler,
   editCategoryHandler,
   deleteCategoryHandler,
-  listServersHandler
+  listServersHandler,
+  // moderation
+  kickMemberHandler,
+  banMemberHandler,
+  unbanMemberHandler,
+  timeoutMemberHandler,
+  disconnectMemberHandler,
+  moveMemberHandler,
+  removeTimeoutHandler,
+  bulkDeleteMessagesHandler,
+  setNicknameHandler,
+  getBansHandler,
+  softbanMemberHandler,
+  pinMessageHandler,
+  unpinMessageHandler,
+  // roles
+  addRoleToMemberHandler,
+  removeRoleFromMemberHandler,
+  createRoleHandler,
+  editRoleHandler,
+  deleteRoleHandler,
+  listRolesHandler,
+  // voice
+  disconnectVoiceHandler,
+  moveVoiceHandler,
+  voiceMuteHandler,
+  voiceDeafenHandler,
+  // members
+  getMemberInfoHandler,
+  listMembersHandler,
+  dmMemberHandler,
+  // invites
+  createInviteHandler,
+  getInvitesHandler,
+  getChannelInvitesHandler,
+  getVanityUrlHandler,
+  // audit
+  getAuditLogsHandler,
+  // emojis
+  listEmojisHandler,
+  createEmojiHandler,
+  deleteEmojiHandler,
+  // channel extras
+  setSlowmodeHandler,
+  lockChannelHandler,
+  unlockChannelHandler
 };
 
 // Export common types

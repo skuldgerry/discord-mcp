@@ -1,11 +1,9 @@
-# MCP-Discord
-[![smithery badge](https://smithery.ai/badge/@barryyip0625/mcp-discord)](https://smithery.ai/server/@barryyip0625/mcp-discord) ![](https://badge.mcpx.dev?type=server 'MCP Server') [![Docker Hub](https://img.shields.io/docker/v/barryy625/mcp-discord?logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/barryy625/mcp-discord)
+# MCP-Discord (Enhanced)
+![](https://badge.mcpx.dev?type=server 'MCP Server')
 
-A Discord MCP (Model Context Protocol) server that enables AI assistants to interact with the Discord platform.
+A comprehensive Discord MCP (Model Context Protocol) server that enables AI assistants to interact with the Discord platform. This is an enhanced fork of the original [mcp-discord](https://github.com/barryyip0625/mcp-discord) by [Barry Yip](https://github.com/barryyip0625) with extensive additional moderation, role management, voice operations, and administrative tools.
 
-<a href="https://glama.ai/mcp/servers/@barryyip0625/mcp-discord">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@barryyip0625/mcp-discord/badge" alt="MCP-Discord MCP server" />
-</a>
+> **Note:** This is a modified version of the original repository, enhanced with AI assistance to add comprehensive Discord moderation and management capabilities. The original work by Barry Yip is preserved and properly attributed.
 
 ## Overview
 
@@ -21,6 +19,15 @@ MCP-Discord provides the following Discord-related functionalities:
 - Create/delete text channels
 - Add/remove message reactions
 - Create/edit/delete/use webhooks
+- **Member Management**: Kick, ban, unban, timeout, softban members
+- **Role Management**: Create, edit, delete, assign, and remove roles
+- **Voice Operations**: Disconnect, move, mute, and deafen members in voice channels
+- **Channel Management**: Set slowmode, lock/unlock channels, pin/unpin messages
+- **Moderation Tools**: Bulk delete messages, set nicknames, view bans, audit logs
+- **Member Information**: Get detailed member data, list server members, send DMs
+- **Invite Management**: Create invites, list server/channel invites, get vanity URLs
+- **Emoji Management**: Create, delete, and list custom emojis
+- **Category Management**: Create, edit, and delete channel categories
 
 ## Table of Contents
 
@@ -33,18 +40,31 @@ MCP-Discord provides the following Discord-related functionalities:
   - [Forum Functions](#forum-functions)
   - [Messages and Reactions](#messages-and-reactions)
   - [Webhook Management](#webhook-management)
+  - [Member Management](#member-management)
+  - [Role Management](#role-management)
+  - [Voice Operations](#voice-operations)
+  - [Moderation Tools](#moderation-tools)
+  - [Member Information](#member-information)
+  - [Invite Management](#invite-management)
+  - [Emoji Management](#emoji-management)
+  - [Category Management](#category-management)
 - [Development](#development)
 - [License](#license)
+- [Attribution](#attribution)
 
 ## Prerequisites
 
-- Node.js (v16.0.0 or higher)
+- Node.js (v18.0.0 or higher)
 - npm (v7.0.0 or higher)
 - A Discord bot with appropriate permissions
   - Bot token (obtainable from the [Discord Developer Portal](https://discord.com/developers/applications))
   - Message Content Intent enabled
   - Server Members Intent enabled
   - Presence Intent enabled
+  - Guild Bans Intent enabled
+  - Guild Voice States Intent enabled
+  - Guild Invites Intent enabled
+  - Guild Moderation Intent enabled
 - Permissions required in your Discord server:
 
   #### Easiest Setup
@@ -60,6 +80,16 @@ MCP-Discord provides the following Discord-related functionalities:
   - Manage Webhooks
   - Add Reactions
   - View Channel
+  - Kick Members
+  - Ban Members
+  - Manage Roles
+  - Manage Nicknames
+  - Move Members
+  - Mute Members
+  - Deafen Members
+  - Manage Emojis and Stickers
+  - Create Instant Invite
+  - View Audit Log
 
 - Add your Discord bot to your server
   - To add your Discord bot to your server, use one of the following invite links (replace `INSERT_CLIENT_ID_HERE` with your bot's client ID):
@@ -84,36 +114,31 @@ npx mcp-discord --config ${DISCORD_TOKEN}
 
 For more details, you can check out the [NPM Package](https://www.npmjs.com/package/mcp-discord).
 
-### Installing via Smithery
-
-To install mcp-discord automatically via [Smithery](https://smithery.ai/server/@barryyip0625/mcp-discord)
-
 ### Installing via Docker
 
-You can run mcp-discord using Docker. The Docker images are automatically built and published to Docker Hub.
-
-**Docker Hub Repository**: [barryy625/mcp-discord](https://hub.docker.com/r/barryy625/mcp-discord)
+You can run the enhanced mcp-discord using Docker with a multi-stage build for optimal size.
 
 ```bash
-# Pull the latest image
-docker pull barryy625/mcp-discord:latest
+# Build the image
+docker build -t skuldgerry/discord-mcp:1.0.0 .
 
 # Run with environment variable
-docker run -e DISCORD_TOKEN=your_discord_bot_token -p 8080:8080 barryy625/mcp-discord:latest
+docker run -e DISCORD_TOKEN=your_discord_bot_token -p 8080:8080 skuldgerry/discord-mcp:1.0.0
 
 # Or run with command line config
-docker run -p 8080:8080 barryy625/mcp-discord:latest --config "your_discord_bot_token"
+docker run -p 8080:8080 skuldgerry/discord-mcp:1.0.0 --config "your_discord_bot_token"
 ```
 
-**Available Tags:**
-- `latest` - Latest stable version from main branch
-- `v1.3.3`, etc. - Specific version releases
+**Features:**
+- Multi-stage Docker build for minimal image size
+- Production dependencies only in final image
+- HTTP transport on port 8080 by default
 
 ### Manual Installation
 ```bash
-# Clone the repository
-git clone https://github.com/barryyip0625/mcp-discord.git
-cd mcp-discord
+# Clone this enhanced repository
+git clone https://github.com/skuldgerry/discord-mcp.git
+cd discord-mcp
 
 # Install dependencies
 npm install
@@ -173,7 +198,7 @@ You can use Docker containers with both Claude and Cursor:
                 "DISCORD_TOKEN=your_discord_bot_token",
                 "-p",
                 "8080:8080",
-                "barryy625/mcp-discord:latest",
+                "skuldgerry/discord-mcp:1.0.0",
                 "--transport",
                 "http",
                 "--port",
@@ -193,7 +218,7 @@ You can use Docker containers with both Claude and Cursor:
         "discord": {
             "command": "node",
             "args": [
-                "path/to/mcp-discord/build/index.js",
+                "path/to/discord-mcp/build/index.js",
                 "--config",
                 "your_discord_bot_token"
             ]
@@ -209,7 +234,7 @@ You can use Docker containers with both Claude and Cursor:
         "discord": {
             "command": "node",
             "args": [
-                "path/to/mcp-discord/build/index.js",
+                "path/to/discord-mcp/build/index.js",
                 "--transport",
                 "http",
                 "--port",
@@ -233,7 +258,7 @@ You can use Docker containers with both Claude and Cursor:
             "args": [
                 "/c",
                 "node",
-                "path/to/mcp-discord/build/index.js",
+                "path/to/discord-mcp/build/index.js",
                 "--config",
                 "your_discord_bot_token"
             ]
@@ -251,7 +276,7 @@ You can use Docker containers with both Claude and Cursor:
             "args": [
                 "/c",
                 "node",
-                "path/to/mcp-discord/build/index.js",
+                "path/to/discord-mcp/build/index.js",
                 "--transport",
                 "http",
                 "--port",
@@ -301,6 +326,71 @@ You can use Docker containers with both Claude and Cursor:
 - `discord_edit_webhook`: Edits an existing webhook for a Discord channel
 - `discord_delete_webhook`: Deletes an existing webhook for a Discord channel
 
+### Member Management
+
+- `discord_kick_member`: Kick a member from a guild
+- `discord_ban_member`: Ban a member from a guild with optional message deletion
+- `discord_unban_member`: Remove a ban from a user
+- `discord_timeout_member`: Timeout a member for a specified duration
+- `discord_remove_timeout`: Remove an active timeout from a member
+- `discord_softban_member`: Ban then immediately unban to purge messages
+
+### Role Management
+
+- `discord_create_role`: Create a new role in a guild
+- `discord_edit_role`: Edit an existing role
+- `discord_delete_role`: Delete a role
+- `discord_add_role`: Assign a role to a member
+- `discord_remove_role`: Remove a role from a member
+- `discord_list_roles`: List all roles in a server
+
+### Voice Operations
+
+- `discord_disconnect_voice`: Disconnect a member from their current voice channel
+- `discord_move_voice`: Move a member to a specific voice channel
+- `discord_voice_mute`: Server mute or unmute a member in voice
+- `discord_voice_deafen`: Server deafen or undeafen a member in voice
+
+### Moderation Tools
+
+- `discord_bulk_delete`: Bulk delete recent messages with optional filters
+- `discord_set_nickname`: Set or clear a member's nickname
+- `discord_get_bans`: List all banned users in a server
+- `discord_pin_message`: Pin a message in a channel
+- `discord_unpin_message`: Unpin a message in a channel
+- `discord_get_audit_logs`: Fetch server audit logs
+
+### Member Information
+
+- `discord_get_member_info`: Get detailed information about a specific member
+- `discord_list_members`: List members in a server with optional filtering
+- `discord_dm_member`: Send a direct message to a user
+
+### Invite Management
+
+- `discord_create_invite`: Create an invite link for a channel
+- `discord_get_invites`: List all server invites
+- `discord_get_channel_invites`: List invites for a specific channel
+- `discord_get_vanity_url`: Get server vanity URL if available
+
+### Emoji Management
+
+- `discord_list_emojis`: List all custom emojis in a server
+- `discord_create_emoji`: Create a custom emoji from an image URL
+- `discord_delete_emoji`: Delete a custom emoji
+
+### Category Management
+
+- `discord_create_category`: Create a new channel category
+- `discord_edit_category`: Edit an existing category
+- `discord_delete_category`: Delete a category
+
+### Channel Extras
+
+- `discord_set_slowmode`: Set channel slowmode in seconds
+- `discord_lock_channel`: Deny @everyone from sending messages
+- `discord_unlock_channel`: Restore @everyone default send messages permission
+
 ## Development
 
 ```bash
@@ -311,3 +401,23 @@ npm run dev
 ## License
 
 [MIT License](https://github.com/barryyip0625/mcp-discord?tab=MIT-1-ov-file)
+
+## Attribution
+
+This enhanced version is based on the original [mcp-discord](https://github.com/barryyip0625/mcp-discord) by [Barry Yip](https://github.com/barryyip0625). The original work is preserved and properly attributed under the MIT License.
+
+### Modifications
+
+This fork includes extensive enhancements added with AI assistance:
+- 40+ additional Discord tools for comprehensive server management
+- Enhanced moderation capabilities (kick, ban, timeout, softban, bulk operations)
+- Complete role management system (create, edit, delete, assign, remove)
+- Voice channel operations (disconnect, move, mute, deafen)
+- Advanced channel management (slowmode, lock/unlock, pin/unpin)
+- Member information and management tools
+- Invite and emoji management
+- Audit log access
+- Improved error handling and type safety
+- Multi-stage Docker build optimization
+
+All modifications maintain compatibility with the original MCP protocol and Discord.js v14.

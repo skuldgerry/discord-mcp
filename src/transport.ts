@@ -27,7 +27,52 @@ import {
   editCategoryHandler,
   createCategoryHandler,
   deleteCategoryHandler,
-  listServersHandler
+  listServersHandler,
+  // moderation
+  kickMemberHandler,
+  banMemberHandler,
+  unbanMemberHandler,
+  timeoutMemberHandler,
+  disconnectMemberHandler,
+  moveMemberHandler,
+  // roles
+  addRoleToMemberHandler,
+  removeRoleFromMemberHandler,
+  createRoleHandler,
+  editRoleHandler,
+  deleteRoleHandler,
+  // voice
+  disconnectVoiceHandler,
+  moveVoiceHandler,
+  voiceMuteHandler,
+  voiceDeafenHandler,
+  // members
+  getMemberInfoHandler,
+  listMembersHandler,
+  // invites
+  createInviteHandler,
+  getInvitesHandler,
+  // audit
+  getAuditLogsHandler,
+  // moderation extras
+  removeTimeoutHandler,
+  bulkDeleteMessagesHandler,
+  setNicknameHandler,
+  getBansHandler,
+  // suggestions
+  softbanMemberHandler,
+  pinMessageHandler,
+  unpinMessageHandler,
+  setSlowmodeHandler,
+  lockChannelHandler,
+  unlockChannelHandler,
+  getChannelInvitesHandler,
+  getVanityUrlHandler,
+  dmMemberHandler,
+  listEmojisHandler,
+  createEmojiHandler,
+  deleteEmojiHandler,
+  listRolesHandler
 } from './tools/tools.js';
 import { Client, GatewayIntentBits } from "discord.js";
 import { info, error } from './logger.js';
@@ -269,6 +314,36 @@ export class StreamableHttpTransport implements MCPTransport {
                                 });
                             }
                         }
+                    case 'discord_kick_member':
+                    case 'discord_ban_member':
+                    case 'discord_unban_member':
+                    case 'discord_timeout_member':
+                    case 'discord_disconnect_member':
+                    case 'discord_move_member':
+                    case 'discord_add_role':
+                    case 'discord_remove_role':
+                    case 'discord_create_role':
+                    case 'discord_edit_role':
+                    case 'discord_delete_role':
+                        // Check if client is logged in
+                        if (!this.toolContext!.client.isReady()) {
+                            error(`Client not ready for method ${method}, client state: ${JSON.stringify({
+                                isReady: this.toolContext!.client.isReady(),
+                                hasToken: !!this.toolContext!.client.token,
+                                user: this.toolContext!.client.user ? {
+                                    id: this.toolContext!.client.user.id,
+                                    tag: this.toolContext!.client.user.tag,
+                                } : null
+                            })}`);
+                            return res.json({
+                                jsonrpc: '2.0',
+                                error: {
+                                    code: -32603,
+                                    message: 'Discord client not logged in. Please use discord_login tool first.',
+                                },
+                                id: req.body?.id || null,
+                            });
+                        }
                         
                         // Call appropriate handler based on method
                         switch (method) {
@@ -334,6 +409,117 @@ export class StreamableHttpTransport implements MCPTransport {
                                 break;
                             case 'discord_delete_category':
                                 result = await deleteCategoryHandler(params, this.toolContext!);
+                                break;
+                    case 'discord_disconnect_voice':
+                        result = await disconnectVoiceHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_move_voice':
+                        result = await moveVoiceHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_voice_mute':
+                        result = await voiceMuteHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_voice_deafen':
+                        result = await voiceDeafenHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_get_member_info':
+                        result = await getMemberInfoHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_list_members':
+                        result = await listMembersHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_create_invite':
+                        result = await createInviteHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_get_invites':
+                        result = await getInvitesHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_get_audit_logs':
+                        result = await getAuditLogsHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_remove_timeout':
+                        result = await removeTimeoutHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_bulk_delete':
+                        result = await bulkDeleteMessagesHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_set_nickname':
+                        result = await setNicknameHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_get_bans':
+                        result = await getBansHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_softban_member':
+                        result = await softbanMemberHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_pin_message':
+                        result = await pinMessageHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_unpin_message':
+                        result = await unpinMessageHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_set_slowmode':
+                        result = await setSlowmodeHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_lock_channel':
+                        result = await lockChannelHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_unlock_channel':
+                        result = await unlockChannelHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_get_channel_invites':
+                        result = await getChannelInvitesHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_get_vanity_url':
+                        result = await getVanityUrlHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_dm_member':
+                        result = await dmMemberHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_list_emojis':
+                        result = await listEmojisHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_create_emoji':
+                        result = await createEmojiHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_delete_emoji':
+                        result = await deleteEmojiHandler(params, this.toolContext!);
+                        break;
+                    case 'discord_list_roles':
+                        result = await listRolesHandler(params, this.toolContext!);
+                        break;
+                            case 'discord_kick_member':
+                                result = await kickMemberHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_ban_member':
+                                result = await banMemberHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_unban_member':
+                                result = await unbanMemberHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_timeout_member':
+                                result = await timeoutMemberHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_disconnect_member':
+                                result = await disconnectMemberHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_move_member':
+                                result = await moveMemberHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_add_role':
+                                result = await addRoleToMemberHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_remove_role':
+                                result = await removeRoleFromMemberHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_create_role':
+                                result = await createRoleHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_edit_role':
+                                result = await editRoleHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_delete_role':
+                                result = await deleteRoleHandler(params, this.toolContext!);
                                 break;
                                 
                         }
@@ -498,6 +684,117 @@ export class StreamableHttpTransport implements MCPTransport {
                                 break;
                             case 'discord_delete_category':
                                 result = await deleteCategoryHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_disconnect_voice':
+                                result = await disconnectVoiceHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_move_voice':
+                                result = await moveVoiceHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_voice_mute':
+                                result = await voiceMuteHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_voice_deafen':
+                                result = await voiceDeafenHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_get_member_info':
+                                result = await getMemberInfoHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_list_members':
+                                result = await listMembersHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_create_invite':
+                                result = await createInviteHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_get_invites':
+                                result = await getInvitesHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_get_audit_logs':
+                                result = await getAuditLogsHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_remove_timeout':
+                                result = await removeTimeoutHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_bulk_delete':
+                                result = await bulkDeleteMessagesHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_set_nickname':
+                                result = await setNicknameHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_get_bans':
+                                result = await getBansHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_softban_member':
+                                result = await softbanMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_pin_message':
+                                result = await pinMessageHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_unpin_message':
+                                result = await unpinMessageHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_set_slowmode':
+                                result = await setSlowmodeHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_lock_channel':
+                                result = await lockChannelHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_unlock_channel':
+                                result = await unlockChannelHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_get_channel_invites':
+                                result = await getChannelInvitesHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_get_vanity_url':
+                                result = await getVanityUrlHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_dm_member':
+                                result = await dmMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_list_emojis':
+                                result = await listEmojisHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_create_emoji':
+                                result = await createEmojiHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_delete_emoji':
+                                result = await deleteEmojiHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_list_roles':
+                                result = await listRolesHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_kick_member':
+                                result = await kickMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_ban_member':
+                                result = await banMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_unban_member':
+                                result = await unbanMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_timeout_member':
+                                result = await timeoutMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_disconnect_member':
+                                result = await disconnectMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_move_member':
+                                result = await moveMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_add_role':
+                                result = await addRoleToMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_remove_role':
+                                result = await removeRoleFromMemberHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_create_role':
+                                result = await createRoleHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_edit_role':
+                                result = await editRoleHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_delete_role':
+                                result = await deleteRoleHandler(toolArgs, this.toolContext!);
                                 break;
                                 
                             default:
