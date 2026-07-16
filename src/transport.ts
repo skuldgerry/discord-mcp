@@ -248,6 +248,7 @@ export class StreamableHttpTransport implements MCPTransport {
                     case 'discord_delete_channel':
                     case 'discord_read_messages':
                     case 'discord_get_server_info':
+                    case 'discord_list_servers':
                     case 'discord_add_reaction':
                     case 'discord_add_multiple_reactions':
                     case 'discord_remove_reaction':
@@ -376,6 +377,9 @@ export class StreamableHttpTransport implements MCPTransport {
                                 break;
                             case 'discord_get_server_info':
                                 result = await getServerInfoHandler(params, this.toolContext!);
+                                break;
+                            case 'discord_list_servers':
+                                result = await listServersHandler(params, this.toolContext!);
                                 break;
                             case 'discord_add_reaction':
                                 result = await addReactionHandler(params, this.toolContext!);
@@ -643,6 +647,9 @@ export class StreamableHttpTransport implements MCPTransport {
                                 
                             case 'discord_get_server_info':
                                 result = await getServerInfoHandler(toolArgs, this.toolContext!);
+                                break;
+                            case 'discord_list_servers':
+                                result = await listServersHandler(toolArgs, this.toolContext!);
                                 break;
                                 
                             case 'discord_add_reaction':
