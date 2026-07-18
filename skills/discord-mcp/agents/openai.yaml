@@ -1,0 +1,4 @@
+interface:
+  display_name: "Discord MCP"
+  short_description: "Operate and maintain the Discord MCP server"
+  default_prompt: "Use $discord-mcp to inspect this Discord MCP server and safely complete the requested Discord workflow."
