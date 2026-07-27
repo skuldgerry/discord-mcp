@@ -1,3 +1,187 @@
+const discordIdSchema = {
+  type: "string",
+  pattern: "^\\d{17,20}$"
+};
+
+const httpUrlSchema = {
+  type: "string",
+  format: "uri",
+  pattern: "^https?://"
+};
+
+const allowedMentionsSchema = {
+  type: "object",
+  description: "Discord allowed_mentions. Pass {} to suppress every mention.",
+  additionalProperties: false,
+  properties: {
+    parse: {
+      type: "array",
+      maxItems: 3,
+      uniqueItems: true,
+      items: { type: "string", enum: ["roles", "users", "everyone"] }
+    },
+    users: { type: "array", maxItems: 100, items: discordIdSchema },
+    roles: { type: "array", maxItems: 100, items: discordIdSchema },
+    repliedUser: { type: "boolean" }
+  }
+};
+
+const linkButtonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    label: { type: "string", minLength: 1, maxLength: 80 },
+    url: httpUrlSchema,
+    emoji: { type: "string" },
+    disabled: { type: "boolean" }
+  },
+  required: ["label", "url"]
+};
+
+const textDisplaySchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    type: { const: "text_display" },
+    content: { type: "string", minLength: 1, maxLength: 4000 }
+  },
+  required: ["type", "content"]
+};
+
+const mediaGallerySchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    type: { const: "media_gallery" },
+    items: {
+      type: "array",
+      minItems: 1,
+      maxItems: 10,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          url: httpUrlSchema,
+          description: { type: "string", maxLength: 1024 },
+          spoiler: { type: "boolean" }
+        },
+        required: ["url"]
+      }
+    }
+  },
+  required: ["type", "items"]
+};
+
+const separatorSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    type: { const: "separator" },
+    divider: { type: "boolean" },
+    spacing: { type: "string", enum: ["small", "large"] }
+  },
+  required: ["type"]
+};
+
+const thumbnailSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    type: { const: "thumbnail" },
+    url: httpUrlSchema,
+    description: { type: "string", maxLength: 1024 },
+    spoiler: { type: "boolean" }
+  },
+  required: ["type", "url"]
+};
+
+const sectionSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    type: { const: "section" },
+    text: {
+      type: "array",
+      minItems: 1,
+      maxItems: 3,
+      items: { type: "string", minLength: 1, maxLength: 4000 }
+    },
+    accessory: {
+      oneOf: [
+        thumbnailSchema,
+        {
+          ...linkButtonSchema,
+          properties: {
+            type: { const: "link_button" },
+            ...linkButtonSchema.properties
+          },
+          required: ["type", "label", "url"]
+        }
+      ]
+    }
+  },
+  required: ["type", "text", "accessory"]
+};
+
+const linkButtonsSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    type: { const: "link_buttons" },
+    buttons: {
+      type: "array",
+      minItems: 1,
+      maxItems: 5,
+      items: linkButtonSchema
+    }
+  },
+  required: ["type", "buttons"]
+};
+
+const containerChildSchemas = [
+  textDisplaySchema,
+  mediaGallerySchema,
+  separatorSchema,
+  sectionSchema,
+  linkButtonsSchema
+];
+
+const containerSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    type: { const: "container" },
+    accentColor: { type: "integer", minimum: 0, maximum: 16777215 },
+    spoiler: { type: "boolean" },
+    components: {
+      type: "array",
+      minItems: 1,
+      maxItems: 40,
+      items: { oneOf: containerChildSchemas }
+    }
+  },
+  required: ["type", "components"]
+};
+
+const componentsSchema = {
+  type: "array",
+  minItems: 1,
+  maxItems: 40,
+  items: {
+    oneOf: [...containerChildSchemas, containerSchema]
+  }
+};
+
+const messageResultSchema = {
+  type: "object",
+  properties: {
+    channelId: { type: "string" },
+    messageId: { type: "string" },
+    url: { type: "string" }
+  },
+  required: ["channelId", "messageId"]
+};
+
 export const toolList = [
   {
     name: "discord_create_category",
@@ -282,14 +466,178 @@ export const toolList = [
   },
   {
     name: "discord_send",
-    description: "Sends a message to a specified Discord text channel",
+    description: "Sends a Discord message. Supports legacy text, typed Components V2, empty allowed_mentions, and suppressed notifications.",
     inputSchema: {
       type: "object",
+      additionalProperties: false,
       properties: {
-        channelId: { type: "string" },
-        message: { type: "string" }
+        channelId: discordIdSchema,
+        message: {
+          type: "string",
+          minLength: 1,
+          maxLength: 2000,
+          description: "Legacy text field retained for backward compatibility."
+        },
+        content: { type: "string", minLength: 1, maxLength: 2000 },
+        components: componentsSchema,
+        allowedMentions: allowedMentionsSchema,
+        suppressNotifications: {
+          type: "boolean",
+          description: "Adds Discord's SUPPRESS_NOTIFICATIONS message flag."
+        }
       },
-      required: ["channelId", "message"]
+      required: ["channelId"],
+      oneOf: [
+        { required: ["message"] },
+        { required: ["content"] },
+        { required: ["components"] }
+      ]
+    },
+    outputSchema: messageResultSchema
+  },
+  {
+    name: "discord_edit_message",
+    description: "Edits a message authored by this bot, using text or the same typed Components V2 model as discord_send.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        messageId: discordIdSchema,
+        message: {
+          type: "string",
+          minLength: 1,
+          maxLength: 2000,
+          description: "Legacy text field retained for consistency with discord_send."
+        },
+        content: { type: "string", minLength: 1, maxLength: 2000 },
+        components: componentsSchema,
+        allowedMentions: allowedMentionsSchema
+      },
+      required: ["channelId", "messageId"],
+      oneOf: [
+        { required: ["message"] },
+        { required: ["content"] },
+        { required: ["components"] }
+      ]
+    },
+    outputSchema: messageResultSchema
+  },
+  {
+    name: "discord_get_message",
+    description: "Gets one Discord message with flags, Components V2, attachments, embeds, poll data, and bot editability.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        messageId: discordIdSchema
+      },
+      required: ["channelId", "messageId"]
+    }
+  },
+  {
+    name: "discord_get_bot_permissions",
+    description: "Gets the bot's effective guild or channel permissions and common Discord capabilities.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        guildId: discordIdSchema,
+        channelId: discordIdSchema
+      },
+      required: ["guildId"]
+    }
+  },
+  {
+    name: "discord_forward_message",
+    description: "Forwards an existing Discord message to another channel using the native message snapshot.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        sourceChannelId: discordIdSchema,
+        messageId: discordIdSchema,
+        targetChannelId: discordIdSchema
+      },
+      required: ["sourceChannelId", "messageId", "targetChannelId"]
+    },
+    outputSchema: messageResultSchema
+  },
+  {
+    name: "discord_crosspost_message",
+    description: "Publishes a message from an Announcement channel.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        messageId: discordIdSchema
+      },
+      required: ["channelId", "messageId"]
+    },
+    outputSchema: messageResultSchema
+  },
+  {
+    name: "discord_send_poll",
+    description: "Sends a native Discord poll with typed answers, duration, mention controls, and optional silent delivery.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        question: { type: "string", minLength: 1, maxLength: 300 },
+        answers: {
+          type: "array",
+          minItems: 2,
+          maxItems: 10,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              text: { type: "string", minLength: 1, maxLength: 55 },
+              emoji: { type: "string" }
+            },
+            required: ["text"]
+          }
+        },
+        durationHours: { type: "integer", minimum: 1, maximum: 768 },
+        allowMultiselect: { type: "boolean" },
+        allowedMentions: allowedMentionsSchema,
+        suppressNotifications: { type: "boolean" }
+      },
+      required: ["channelId", "question", "answers", "durationHours"]
+    },
+    outputSchema: messageResultSchema
+  },
+  {
+    name: "discord_end_poll",
+    description: "Ends a native Discord poll authored by this bot.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        messageId: discordIdSchema
+      },
+      required: ["channelId", "messageId"]
+    },
+    outputSchema: messageResultSchema
+  },
+  {
+    name: "discord_get_poll_voters",
+    description: "Lists users who voted for one answer in a native Discord poll.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        messageId: discordIdSchema,
+        answerId: { type: "integer", minimum: 1 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        after: discordIdSchema
+      },
+      required: ["channelId", "messageId", "answerId"]
     }
   },
   {
@@ -651,7 +999,17 @@ export const toolList = [
       properties: {
         guildId: { type: "string" },
         name: { type: "string" },
-        color: { type: "string" },
+        color: { type: "string", description: "Legacy primary color; prefer colors.primaryColor." },
+        colors: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            primaryColor: { oneOf: [{ type: "integer", minimum: 0, maximum: 16777215 }, { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }] },
+            secondaryColor: { oneOf: [{ type: "integer", minimum: 0, maximum: 16777215 }, { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }, { type: "null" }] },
+            tertiaryColor: { oneOf: [{ type: "integer", minimum: 0, maximum: 16777215 }, { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }, { type: "null" }] }
+          },
+          required: ["primaryColor"]
+        },
         hoist: { type: "boolean" },
         mentionable: { type: "boolean" },
         permissions: { type: "array", items: { type: "string" } },
@@ -669,7 +1027,17 @@ export const toolList = [
         guildId: { type: "string" },
         roleId: { type: "string" },
         name: { type: "string" },
-        color: { type: "string" },
+        color: { type: "string", description: "Legacy primary color; prefer colors.primaryColor." },
+        colors: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            primaryColor: { oneOf: [{ type: "integer", minimum: 0, maximum: 16777215 }, { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }] },
+            secondaryColor: { oneOf: [{ type: "integer", minimum: 0, maximum: 16777215 }, { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }, { type: "null" }] },
+            tertiaryColor: { oneOf: [{ type: "integer", minimum: 0, maximum: 16777215 }, { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }, { type: "null" }] }
+          },
+          required: ["primaryColor"]
+        },
         hoist: { type: "boolean" },
         mentionable: { type: "boolean" },
         permissions: { type: "array", items: { type: "string" } },

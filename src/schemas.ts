@@ -4,9 +4,182 @@ export const DiscordLoginSchema = z.object({
     token: z.string().optional()
 });
 
+const DiscordIdSchema = z.string().regex(/^\d{17,20}$/, "Expected a Discord snowflake ID");
+const HttpUrlSchema = z.string().url().refine(
+    value => value.startsWith("https://") || value.startsWith("http://"),
+    "Expected an HTTP or HTTPS URL"
+);
+
+export const AllowedMentionsSchema = z.object({
+    parse: z.array(z.enum(["roles", "users", "everyone"])).max(3).optional(),
+    users: z.array(DiscordIdSchema).max(100).optional(),
+    roles: z.array(DiscordIdSchema).max(100).optional(),
+    repliedUser: z.boolean().optional()
+}).strict();
+
+const LinkButtonSchema = z.object({
+    label: z.string().min(1).max(80),
+    url: HttpUrlSchema,
+    emoji: z.string().optional(),
+    disabled: z.boolean().optional()
+});
+
+const ThumbnailSchema = z.object({
+    type: z.literal("thumbnail"),
+    url: HttpUrlSchema,
+    description: z.string().max(1024).optional(),
+    spoiler: z.boolean().optional()
+});
+
+const SectionAccessorySchema = z.discriminatedUnion("type", [
+    ThumbnailSchema,
+    LinkButtonSchema.extend({ type: z.literal("link_button") })
+]);
+
+const TextDisplaySchema = z.object({
+    type: z.literal("text_display"),
+    content: z.string().min(1).max(4000)
+});
+
+const MediaGallerySchema = z.object({
+    type: z.literal("media_gallery"),
+    items: z.array(z.object({
+        url: HttpUrlSchema,
+        description: z.string().max(1024).optional(),
+        spoiler: z.boolean().optional()
+    })).min(1).max(10)
+});
+
+const SeparatorSchema = z.object({
+    type: z.literal("separator"),
+    divider: z.boolean().optional(),
+    spacing: z.enum(["small", "large"]).optional()
+});
+
+const SectionSchema = z.object({
+    type: z.literal("section"),
+    text: z.array(z.string().min(1).max(4000)).min(1).max(3),
+    accessory: SectionAccessorySchema
+});
+
+const LinkButtonsSchema = z.object({
+    type: z.literal("link_buttons"),
+    buttons: z.array(LinkButtonSchema).min(1).max(5)
+});
+
+const ContainerChildSchema = z.discriminatedUnion("type", [
+    TextDisplaySchema,
+    MediaGallerySchema,
+    SeparatorSchema,
+    SectionSchema,
+    LinkButtonsSchema
+]);
+
+const ContainerSchema = z.object({
+    type: z.literal("container"),
+    accentColor: z.number().int().min(0).max(0xFFFFFF).optional(),
+    spoiler: z.boolean().optional(),
+    components: z.array(ContainerChildSchema).min(1).max(40)
+});
+
+export const MessageComponentSchema = z.discriminatedUnion("type", [
+    TextDisplaySchema,
+    MediaGallerySchema,
+    SeparatorSchema,
+    SectionSchema,
+    LinkButtonsSchema,
+    ContainerSchema
+]);
+
 export const SendMessageSchema = z.object({
-    channelId: z.string(),
-    message: z.string()
+    channelId: DiscordIdSchema,
+    message: z.string().min(1).max(2000).optional(),
+    content: z.string().min(1).max(2000).optional(),
+    components: z.array(MessageComponentSchema).min(1).max(40).optional(),
+    allowedMentions: AllowedMentionsSchema.optional(),
+    suppressNotifications: z.boolean().optional()
+}).superRefine((value, context) => {
+    const modes = [
+        value.message !== undefined,
+        value.content !== undefined,
+        value.components !== undefined
+    ].filter(Boolean).length;
+
+    if (modes !== 1) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Provide exactly one of message, content, or components"
+        });
+    }
+});
+
+export const EditMessageSchema = z.object({
+    channelId: DiscordIdSchema,
+    messageId: DiscordIdSchema,
+    message: z.string().min(1).max(2000).optional(),
+    content: z.string().min(1).max(2000).optional(),
+    components: z.array(MessageComponentSchema).min(1).max(40).optional(),
+    allowedMentions: AllowedMentionsSchema.optional()
+}).superRefine((value, context) => {
+    const modes = [
+        value.message !== undefined,
+        value.content !== undefined,
+        value.components !== undefined
+    ].filter(Boolean).length;
+
+    if (modes !== 1) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Provide exactly one of message, content, or components"
+        });
+    }
+});
+
+export const GetMessageSchema = z.object({
+    channelId: DiscordIdSchema,
+    messageId: DiscordIdSchema
+});
+
+export const GetBotPermissionsSchema = z.object({
+    guildId: DiscordIdSchema,
+    channelId: DiscordIdSchema.optional()
+});
+
+export const ForwardMessageSchema = z.object({
+    sourceChannelId: DiscordIdSchema,
+    messageId: DiscordIdSchema,
+    targetChannelId: DiscordIdSchema
+});
+
+export const CrosspostMessageSchema = z.object({
+    channelId: DiscordIdSchema,
+    messageId: DiscordIdSchema
+});
+
+export const SendPollSchema = z.object({
+    channelId: DiscordIdSchema,
+    question: z.string().min(1).max(300),
+    answers: z.array(z.object({
+        text: z.string().min(1).max(55),
+        emoji: z.string().optional()
+    })).min(2).max(10),
+    durationHours: z.number().int().min(1).max(768),
+    allowMultiselect: z.boolean().optional(),
+    allowedMentions: AllowedMentionsSchema.optional(),
+    suppressNotifications: z.boolean().optional()
+});
+
+export const EndPollSchema = z.object({
+    channelId: DiscordIdSchema,
+    messageId: DiscordIdSchema
+});
+
+export const GetPollVotersSchema = z.object({
+    channelId: DiscordIdSchema,
+    messageId: DiscordIdSchema,
+    answerId: z.number().int().positive(),
+    limit: z.number().int().min(1).max(100).optional(),
+    after: DiscordIdSchema.optional()
 });
 
 export const GetForumChannelsSchema = z.object({
@@ -174,6 +347,17 @@ export const MoveMemberSchema = z.object({
 });
 
 // Role management schemas
+const RoleColorSchema = z.union([
+    z.number().int().min(0).max(0xFFFFFF),
+    z.string().regex(/^#[0-9a-fA-F]{6}$/, "Expected a hex color such as #5865F2")
+]);
+
+const RoleColorsSchema = z.object({
+    primaryColor: RoleColorSchema,
+    secondaryColor: RoleColorSchema.nullable().optional(),
+    tertiaryColor: RoleColorSchema.nullable().optional()
+}).strict();
+
 export const AddRoleSchema = z.object({
     guildId: z.string(),
     userId: z.string(),
@@ -192,6 +376,7 @@ export const CreateRoleSchema = z.object({
     guildId: z.string(),
     name: z.string(),
     color: z.string().optional(),
+    colors: RoleColorsSchema.optional(),
     hoist: z.boolean().optional(),
     mentionable: z.boolean().optional(),
     permissions: z.array(z.string()).optional(),
@@ -203,6 +388,7 @@ export const EditRoleSchema = z.object({
     roleId: z.string(),
     name: z.string().optional(),
     color: z.string().optional(),
+    colors: RoleColorsSchema.optional(),
     hoist: z.boolean().optional(),
     mentionable: z.boolean().optional(),
     permissions: z.array(z.string()).optional(),

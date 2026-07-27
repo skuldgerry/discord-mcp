@@ -1,10 +1,7 @@
 import { Client } from "discord.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-export interface ToolResponse {
-  content: { type: string; text: string }[];
-  isError?: boolean;
-  [key: string]: unknown;
-}
+export type ToolResponse = CallToolResult;
 
 export interface ToolContext {
   client: Client;

@@ -36,7 +36,7 @@ Trace failures in this order:
 4. Call a read-only tool with known-good IDs.
 5. If the tool is listed but returns `Unknown tool`, audit every dispatch surface.
 6. If the tool is absent, inspect `src/toolList.ts` and rebuild/restart the exact artifact used by the client.
-7. If stdio works but HTTP fails, compare `src/server.ts` with both HTTP dispatch switches in `src/transport.ts`.
+7. If stdio works but HTTP fails, verify that HTTP still delegates to the SDK transport and creates the same server factory used by stdio.
 
 Run:
 
@@ -53,8 +53,8 @@ For every new or renamed tool:
 1. Define or reuse argument validation in `src/schemas.ts`.
 2. Implement the handler under `src/tools/` and export it through `src/tools/tools.ts`.
 3. Add the public definition and JSON input schema to `src/toolList.ts`.
-4. Add dispatch in `src/server.ts`.
-5. Add dispatch to every applicable switch in `src/transport.ts`, including MCP `tools/call` and the legacy direct-method route.
+4. Register the handler once in the `toolHandlers` registry in `src/tools/tools.ts`.
+5. Do not add transport-specific tool dispatch. Both stdio and HTTP must use the same server factory and registry.
 6. Keep returned values in MCP `ToolResponse` shape and route Discord API failures through `handleDiscordError`.
 7. Run the dispatch audit, TypeScript build, and relevant smoke checks.
 

@@ -1,5 +1,9 @@
-import { z } from "zod";
-import { PermissionsBitField, PermissionResolvable } from "discord.js";
+import {
+  type ColorResolvable,
+  type PermissionResolvable,
+  type RoleColorsEditResolvable,
+  type RoleColorsResolvable
+} from "discord.js";
 import { ToolContext, ToolResponse } from "./types.js";
 import { 
   AddRoleSchema,
@@ -15,6 +19,38 @@ function parsePermissions(perms?: string[]): PermissionResolvable | undefined {
   if (!perms || perms.length === 0) return undefined;
   // Map string names to PermissionFlagsBits if possible; discord.js accepts strings as well
   return perms as unknown as PermissionResolvable;
+}
+
+function asColor(value: string | number): ColorResolvable {
+  return value as ColorResolvable;
+}
+
+function createRoleColors(
+  colors?: { primaryColor: string | number; secondaryColor?: string | number | null; tertiaryColor?: string | number | null },
+  legacyColor?: string
+): RoleColorsResolvable | undefined {
+  if (!colors) return legacyColor ? { primaryColor: asColor(legacyColor) } : undefined;
+  return {
+    primaryColor: asColor(colors.primaryColor),
+    ...(colors.secondaryColor != null ? { secondaryColor: asColor(colors.secondaryColor) } : {}),
+    ...(colors.tertiaryColor != null ? { tertiaryColor: asColor(colors.tertiaryColor) } : {})
+  };
+}
+
+function editRoleColors(
+  colors?: { primaryColor: string | number; secondaryColor?: string | number | null; tertiaryColor?: string | number | null },
+  legacyColor?: string
+): RoleColorsEditResolvable | undefined {
+  if (!colors) return legacyColor ? { primaryColor: asColor(legacyColor) } : undefined;
+  return {
+    primaryColor: asColor(colors.primaryColor),
+    ...(colors.secondaryColor !== undefined
+      ? { secondaryColor: colors.secondaryColor === null ? null : asColor(colors.secondaryColor) }
+      : {}),
+    ...(colors.tertiaryColor !== undefined
+      ? { tertiaryColor: colors.tertiaryColor === null ? null : asColor(colors.tertiaryColor) }
+      : {})
+  };
 }
 
 export async function addRoleToMemberHandler(args: unknown, context: ToolContext): Promise<ToolResponse> {
@@ -62,7 +98,7 @@ export async function removeRoleFromMemberHandler(args: unknown, context: ToolCo
 }
 
 export async function createRoleHandler(args: unknown, context: ToolContext): Promise<ToolResponse> {
-  const { guildId, name, color, hoist, mentionable, permissions, reason } = CreateRoleSchema.parse(args);
+  const { guildId, name, color, colors, hoist, mentionable, permissions, reason } = CreateRoleSchema.parse(args);
   try {
     if (!context.client.isReady()) {
       return { content: [{ type: "text", text: "Discord client not logged in." }], isError: true };
@@ -73,20 +109,29 @@ export async function createRoleHandler(args: unknown, context: ToolContext): Pr
     }
     const role = await guild.roles.create({
       name,
-      color: color as any,
+      ...(createRoleColors(colors, color) ? { colors: createRoleColors(colors, color)! } : {}),
       hoist,
       mentionable,
       permissions: parsePermissions(permissions),
       reason
     });
-    return { content: [{ type: "text", text: `Created role ${role.id} (${role.name})` }] };
+    const data = {
+      guildId,
+      roleId: role.id,
+      name: role.name,
+      colors: role.colors
+    };
+    return {
+      content: [{ type: "text", text: `Created role ${role.id} (${role.name})` }],
+      structuredContent: data
+    };
   } catch (error) {
     return handleDiscordError(error);
   }
 }
 
 export async function editRoleHandler(args: unknown, context: ToolContext): Promise<ToolResponse> {
-  const { guildId, roleId, name, color, hoist, mentionable, permissions, reason } = EditRoleSchema.parse(args);
+  const { guildId, roleId, name, color, colors, hoist, mentionable, permissions, reason } = EditRoleSchema.parse(args);
   try {
     if (!context.client.isReady()) {
       return { content: [{ type: "text", text: "Discord client not logged in." }], isError: true };
@@ -99,15 +144,23 @@ export async function editRoleHandler(args: unknown, context: ToolContext): Prom
     if (!role) {
       return { content: [{ type: "text", text: `Cannot find role ${roleId}` }], isError: true };
     }
-    await role.edit({
+    const edited = await role.edit({
       name,
-      color: color as any,
+      ...(editRoleColors(colors, color) ? { colors: editRoleColors(colors, color)! } : {}),
       hoist,
       mentionable,
       permissions: parsePermissions(permissions),
       reason
     });
-    return { content: [{ type: "text", text: `Edited role ${roleId}` }] };
+    return {
+      content: [{ type: "text", text: `Edited role ${roleId}` }],
+      structuredContent: {
+        guildId,
+        roleId: edited.id,
+        name: edited.name,
+        colors: edited.colors
+      }
+    };
   } catch (error) {
     return handleDiscordError(error);
   }
@@ -145,8 +198,19 @@ export async function listRolesHandler(args: unknown, context: ToolContext): Pro
       return { content: [{ type: "text", text: `Cannot find guild with ID: ${guildId}` }], isError: true };
     }
     const roles = await guild.roles.fetch();
-    const data = roles.map(r => ({ id: r.id, name: r.name, position: r.position, color: r.hexColor, hoist: r.hoist, mentionable: r.mentionable }));
-    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+    const data = roles.map(r => ({
+      id: r.id,
+      name: r.name,
+      position: r.position,
+      color: r.hexColor,
+      colors: r.colors,
+      hoist: r.hoist,
+      mentionable: r.mentionable
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      structuredContent: { guildId, roles: data }
+    };
   } catch (error) {
     return handleDiscordError(error);
   }

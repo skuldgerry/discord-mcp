@@ -13,14 +13,17 @@ MCP-Discord provides the following Discord-related functionalities:
 - List servers the bot is a member of
 - Get server information
 - Read/delete channel messages
-- Send messages to specified channels (using either channel IDs or channel names)
+- Send legacy text or typed Discord Components V2 messages
+- Edit messages authored by the bot
+- Forward/crosspost messages and create/end/read native polls
+- Inspect the bot's effective guild/channel permissions
 - Retrieve forum channel lists
 - Create/delete/reply to forum posts
 - Create/delete text channels
 - Add/remove message reactions
 - Create/edit/delete/use webhooks
 - **Member Management**: Kick, ban, unban, timeout, softban members
-- **Role Management**: Create, edit, delete, assign, and remove roles
+- **Role Management**: Create, edit, delete, assign, and remove roles, including gradient role colors
 - **Voice Operations**: Disconnect, move, mute, and deafen members in voice channels
 - **Channel Management**: Set slowmode, lock/unlock channels, pin/unpin messages
 - **Moderation Tools**: Bulk delete messages, set nicknames, view bans, audit logs
@@ -52,10 +55,17 @@ MCP-Discord provides the following Discord-related functionalities:
 - [License](#license)
 - [Attribution](#attribution)
 
+## Compatibility
+
+- Node.js 22 or newer
+- Discord API v10 through `discord.js` 14.27
+- Model Context Protocol through `@modelcontextprotocol/sdk` 1.29, including the stable 2025-11-25 protocol revision
+- Stateless Streamable HTTP and stdio transports share the same handler registry
+
 ## Prerequisites
 
-- Node.js (v18.0.0 or higher)
-- npm (v7.0.0 or higher)
+- Node.js (v22.0.0 or higher)
+- npm
 - A Discord bot with appropriate permissions
   - Bot token (obtainable from the [Discord Developer Portal](https://discord.com/developers/applications))
   - Message Content Intent enabled
@@ -72,6 +82,8 @@ MCP-Discord provides the following Discord-related functionalities:
 
   #### Or, select only the required permissions:
   - Send Messages
+  - Send Polls
+  - Pin Messages
   - Create Public Threads
   - Send Messages in Threads
   - Manage Messages
@@ -120,19 +132,23 @@ You can run the enhanced mcp-discord using Docker with a multi-stage build for o
 
 ```bash
 # Build the image
-docker build -t skuldgerry/discord-mcp:1.0.0 .
+docker build -t skuldgerry/discord-mcp:1.4.0 .
 
-# Run with environment variable
-docker run -e DISCORD_TOKEN=your_discord_bot_token -p 8080:8080 skuldgerry/discord-mcp:1.0.0
-
-# Or run with command line config
-docker run -p 8080:8080 skuldgerry/discord-mcp:1.0.0 --config "your_discord_bot_token"
+# Run locally with the Discord token supplied only at runtime
+docker run --rm --name mcp-discord \
+  -e DISCORD_TOKEN=your_discord_bot_token \
+  -p 127.0.0.1:8080:8080 \
+  skuldgerry/discord-mcp:1.4.0
 ```
 
 **Features:**
 - Multi-stage Docker build for minimal image size
 - Production dependencies only in final image
+- Runs as the unprivileged `node` user
+- Built-in health check at `/healthz`
 - HTTP transport on port 8080 by default
+
+The loopback port binding keeps the unauthenticated HTTP endpoint local to the Docker host. For a trusted LAN deployment, replace `127.0.0.1:8080:8080` with `8080:8080`.
 
 ### Manual Installation
 ```bash
@@ -161,6 +177,7 @@ A Discord bot token is required for proper operation. The server supports two tr
    - HTTP-based transport for more advanced scenarios
    - Supports stateless operation
    - Configurable port number
+   - Currently has no application-level authentication or Origin validation; expose it only on a trusted internal network
 
 ### Configuration Options
 
@@ -198,7 +215,7 @@ You can use Docker containers with both Claude and Cursor:
                 "DISCORD_TOKEN=your_discord_bot_token",
                 "-p",
                 "8080:8080",
-                "skuldgerry/discord-mcp:1.0.0",
+                "skuldgerry/discord-mcp:1.4.0",
                 "--transport",
                 "http",
                 "--port",
@@ -295,7 +312,10 @@ You can use Docker containers with both Claude and Cursor:
 
 - `discord_login`: Login to Discord using the configured token
 - `discord_list_servers`: List all Discord servers the bot is a member of
-- `discord_send`: Send a message to a specified channel (supports both channel ID and channel name)
+- `discord_send`: Send legacy text or typed Components V2 (Text Display, Media Gallery, Container, Separator, Section/Thumbnail, and link buttons), with allowed mention controls and silent delivery
+- `discord_edit_message`: Edit text or Components V2 messages authored by the bot
+- `discord_get_message`: Read one message including flags, components, attachments, embeds, and poll state
+- `discord_get_bot_permissions`: Inspect effective bot permissions and common capabilities
 - `discord_get_server_info`: Get Discord server information
 
 ### Channel Management
@@ -313,7 +333,12 @@ You can use Docker containers with both Claude and Cursor:
 
 ### Messages and Reactions
 
-- `discord_read_messages`: Read channel messages
+- `discord_read_messages`: Read channel messages, including Components V2, flags, attachments, embeds, and polls
+- `discord_forward_message`: Forward a message using Discord's native message snapshot
+- `discord_crosspost_message`: Publish a message from an Announcement channel
+- `discord_send_poll`: Send a native Discord poll
+- `discord_end_poll`: End a poll authored by the bot
+- `discord_get_poll_voters`: List voters for a poll answer
 - `discord_add_reaction`: Add a reaction to a message
 - `discord_add_multiple_reactions`: Add multiple reactions to a message
 - `discord_remove_reaction`: Remove a reaction from a message

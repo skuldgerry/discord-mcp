@@ -242,21 +242,45 @@ export async function readMessagesHandler(
         username: msg.author.username,
         bot: msg.author.bot
       },
-      timestamp: msg.createdAt,
-      attachments: msg.attachments.size,
-      embeds: msg.embeds.length,
+      timestamp: msg.createdAt.toISOString(),
+      editedAt: msg.editedAt?.toISOString() ?? null,
+      flags: msg.flags.toArray(),
+      pinned: msg.pinned,
+      components: msg.components.map(component => component.toJSON()),
+      attachments: msg.attachments.map(attachment => ({
+        id: attachment.id,
+        name: attachment.name,
+        url: attachment.url,
+        contentType: attachment.contentType,
+        size: attachment.size
+      })),
+      embeds: msg.embeds.map(embed => embed.toJSON()),
+      poll: msg.poll ? {
+        question: msg.poll.question.text,
+        expiresAt: msg.poll.expiresAt?.toISOString() ?? null,
+        allowMultiselect: msg.poll.allowMultiselect,
+        finalized: msg.poll.resultsFinalized,
+        answers: msg.poll.answers.map(answer => ({
+          id: answer.id,
+          text: answer.text,
+          emoji: answer.emoji?.identifier ?? null,
+          votes: answer.voteCount
+        }))
+      } : null,
       replyTo: msg.reference ? msg.reference.messageId : null
-    })).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    })).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
+    const data = {
+      channelId,
+      messageCount: formattedMessages.length,
+      messages: formattedMessages
+    };
     return {
       content: [{ 
         type: "text", 
-        text: JSON.stringify({
-          channelId,
-          messageCount: formattedMessages.length,
-          messages: formattedMessages
-        }, null, 2) 
-      }]
+        text: JSON.stringify(data, null, 2)
+      }],
+      structuredContent: data
     };
   } catch (error) {
     return handleDiscordError(error);

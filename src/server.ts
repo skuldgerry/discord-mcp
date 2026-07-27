@@ -1,402 +1,86 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { Client } from "discord.js";
-import { z } from "zod";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { toolList } from './toolList.js';
+import { Client } from "discord.js";
+import { z } from "zod";
+import { toolList } from "./toolList.js";
+import { error, info } from "./logger.js";
+import type { MCPTransport } from "./transport.js";
 import {
   createToolContext,
-  loginHandler,
-  sendMessageHandler,
-  getForumChannelsHandler,
-  createForumPostHandler,
-  getForumPostHandler,
-  replyToForumHandler,
-  deleteForumPostHandler,
-  createTextChannelHandler,
-  deleteChannelHandler,
-  readMessagesHandler,
-  getServerInfoHandler,
-  addReactionHandler,
-  addMultipleReactionsHandler,
-  removeReactionHandler,
-  deleteMessageHandler,
-  createWebhookHandler,
-  sendWebhookMessageHandler,
-  editWebhookHandler,
-  deleteWebhookHandler,
-  createCategoryHandler,
-  editCategoryHandler,
-  deleteCategoryHandler,
-  listServersHandler,
-  kickMemberHandler,
-  banMemberHandler,
-  unbanMemberHandler,
-  timeoutMemberHandler,
-  disconnectMemberHandler,
-  moveMemberHandler,
-  addRoleToMemberHandler,
-  removeRoleFromMemberHandler,
-  createRoleHandler,
-  editRoleHandler,
-  deleteRoleHandler,
-  disconnectVoiceHandler,
-  moveVoiceHandler,
-  voiceMuteHandler,
-  voiceDeafenHandler,
-  getMemberInfoHandler,
-  listMembersHandler,
-  createInviteHandler,
-  getInvitesHandler,
-  getAuditLogsHandler,
-  removeTimeoutHandler,
-  bulkDeleteMessagesHandler,
-  setNicknameHandler,
-  getBansHandler,
-  softbanMemberHandler,
-  pinMessageHandler,
-  unpinMessageHandler,
-  setSlowmodeHandler,
-  lockChannelHandler,
-  unlockChannelHandler,
-  getChannelInvitesHandler,
-  getVanityUrlHandler,
-  dmMemberHandler,
-  listEmojisHandler,
-  createEmojiHandler,
-  deleteEmojiHandler,
-  listRolesHandler
-} from './tools/tools.js';
-import { MCPTransport } from './transport.js';
-import { info, error } from './logger.js';
+  getToolHandler,
+} from "./tools/tools.js";
 
 export class DiscordMCPServer {
-  private server: Server;
-  private toolContext: ReturnType<typeof createToolContext>;
-  private clientStatusInterval: NodeJS.Timeout | null = null;
+  private readonly toolContext;
 
   constructor(
-    private client: Client, 
-    private transport: MCPTransport
+    private readonly client: Client,
+    private readonly transport: MCPTransport,
   ) {
-    this.server = new Server(
+    this.toolContext = createToolContext(client);
+  }
+
+  private createServer(): Server {
+    const server = new Server(
       {
         name: "MCP-Discord",
-        version: "1.0.0"
+        version: "1.4.0",
       },
       {
         capabilities: {
-          tools: {}
-        }
-      }
+          tools: {},
+        },
+      },
     );
 
-    this.toolContext = createToolContext(client);
-    this.setupHandlers();
-  }
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: toolList,
+    }));
 
-  private setupHandlers() {
-    // Set up the tool list
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: toolList
-      };
-    });
-
-    // Handle tool execution requests
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
 
       try {
-        let toolResponse;
-        switch (name) {
-          case "discord_create_category":
-            toolResponse = await createCategoryHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_edit_category":
-            toolResponse = await editCategoryHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_delete_category":
-            toolResponse = await deleteCategoryHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_login": toolResponse = await loginHandler(args, this.toolContext);
-            this.logClientState("after discord_login handler");
-            return toolResponse;
-
-          case "discord_send":
-            this.logClientState("before discord_send handler");
-            toolResponse = await sendMessageHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_get_forum_channels":
-            this.logClientState("before discord_get_forum_channels handler");
-            toolResponse = await getForumChannelsHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_create_forum_post":
-            this.logClientState("before discord_create_forum_post handler");
-            toolResponse = await createForumPostHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_get_forum_post":
-            this.logClientState("before discord_get_forum_post handler");
-            toolResponse = await getForumPostHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_reply_to_forum":
-            this.logClientState("before discord_reply_to_forum handler");
-            toolResponse = await replyToForumHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_delete_forum_post":
-            this.logClientState("before discord_delete_forum_post handler");
-            toolResponse = await deleteForumPostHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_create_text_channel":
-            this.logClientState("before discord_create_text_channel handler");
-            toolResponse = await createTextChannelHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_delete_channel":
-            this.logClientState("before discord_delete_channel handler");
-            toolResponse = await deleteChannelHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_read_messages":
-            this.logClientState("before discord_read_messages handler");
-            toolResponse = await readMessagesHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_get_server_info":
-            this.logClientState("before discord_get_server_info handler");
-            toolResponse = await getServerInfoHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_add_reaction":
-            this.logClientState("before discord_add_reaction handler");
-            toolResponse = await addReactionHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_add_multiple_reactions":
-            this.logClientState("before discord_add_multiple_reactions handler");
-            toolResponse = await addMultipleReactionsHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_remove_reaction":
-            this.logClientState("before discord_remove_reaction handler");
-            toolResponse = await removeReactionHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_delete_message":
-            this.logClientState("before discord_delete_message handler");
-            toolResponse = await deleteMessageHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_create_webhook":
-            this.logClientState("before discord_create_webhook handler");
-            toolResponse = await createWebhookHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_send_webhook_message":
-            this.logClientState("before discord_send_webhook_message handler");
-            toolResponse = await sendWebhookMessageHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_edit_webhook":
-            this.logClientState("before discord_edit_webhook handler");
-            toolResponse = await editWebhookHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_delete_webhook":
-            this.logClientState("before discord_delete_webhook handler");
-            toolResponse = await deleteWebhookHandler(args, this.toolContext);
-            return toolResponse;
-
-          case "discord_list_servers":
-            this.logClientState("before discord_list_servers handler");
-            toolResponse = await listServersHandler(args, this.toolContext);
-            return toolResponse;
-
-          // Moderation tools
-          case "discord_kick_member":
-            toolResponse = await kickMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_ban_member":
-            toolResponse = await banMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_unban_member":
-            toolResponse = await unbanMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_timeout_member":
-            toolResponse = await timeoutMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_disconnect_member":
-            toolResponse = await disconnectMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_move_member":
-            toolResponse = await moveMemberHandler(args, this.toolContext);
-            return toolResponse;
-
-          // Role tools
-          case "discord_add_role":
-            toolResponse = await addRoleToMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_remove_role":
-            toolResponse = await removeRoleFromMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_create_role":
-            toolResponse = await createRoleHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_edit_role":
-            toolResponse = await editRoleHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_delete_role":
-            toolResponse = await deleteRoleHandler(args, this.toolContext);
-            return toolResponse;
-          // Voice aliases
-          case "discord_disconnect_voice":
-            toolResponse = await disconnectVoiceHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_move_voice":
-            toolResponse = await moveVoiceHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_voice_mute":
-            toolResponse = await voiceMuteHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_voice_deafen":
-            toolResponse = await voiceDeafenHandler(args, this.toolContext);
-            return toolResponse;
-          // Member info
-          case "discord_get_member_info":
-            toolResponse = await getMemberInfoHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_list_members":
-            toolResponse = await listMembersHandler(args, this.toolContext);
-            return toolResponse;
-          // Invites
-          case "discord_create_invite":
-            toolResponse = await createInviteHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_get_invites":
-            toolResponse = await getInvitesHandler(args, this.toolContext);
-            return toolResponse;
-          // Audit
-          case "discord_get_audit_logs":
-            toolResponse = await getAuditLogsHandler(args, this.toolContext);
-            return toolResponse;
-          // Moderation extras
-          case "discord_remove_timeout":
-            toolResponse = await removeTimeoutHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_bulk_delete":
-            toolResponse = await bulkDeleteMessagesHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_set_nickname":
-            toolResponse = await setNicknameHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_get_bans":
-            toolResponse = await getBansHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_softban_member":
-            toolResponse = await softbanMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_pin_message":
-            toolResponse = await pinMessageHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_unpin_message":
-            toolResponse = await unpinMessageHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_set_slowmode":
-            toolResponse = await setSlowmodeHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_lock_channel":
-            toolResponse = await lockChannelHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_unlock_channel":
-            toolResponse = await unlockChannelHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_get_channel_invites":
-            toolResponse = await getChannelInvitesHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_get_vanity_url":
-            toolResponse = await getVanityUrlHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_dm_member":
-            toolResponse = await dmMemberHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_list_emojis":
-            toolResponse = await listEmojisHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_create_emoji":
-            toolResponse = await createEmojiHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_delete_emoji":
-            toolResponse = await deleteEmojiHandler(args, this.toolContext);
-            return toolResponse;
-          case "discord_list_roles":
-            toolResponse = await listRolesHandler(args, this.toolContext);
-            return toolResponse;
-
-          default:
-            throw new Error(`Unknown tool: ${name}`);
+        const handler = getToolHandler(name);
+        if (!handler) {
+          throw new Error(`Unknown tool: ${name}`);
         }
-      } catch (error) {
-        if (error instanceof z.ZodError) {
+
+        return await handler(args, this.toolContext);
+      } catch (caught) {
+        if (caught instanceof z.ZodError) {
           return {
             content: [{
               type: "text",
-              text: `Invalid arguments: ${error.errors
-                .map((e: z.ZodIssue) => `${e.path.join(".")}: ${e.message}`)
-                .join(", ")}`
+              text: `Invalid arguments: ${caught.errors
+                .map((issue: z.ZodIssue) => `${issue.path.join(".")}: ${issue.message}`)
+                .join(", ")}`,
             }],
-            isError: true
+            isError: true,
           };
         }
 
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const message = caught instanceof Error ? caught.message : "Unknown error";
+        error(`Error executing ${name}: ${message}`);
         return {
-          content: [{ type: "text", text: `Error executing tool: ${errorMessage}` }],
-          isError: true
+          content: [{ type: "text", text: `Error executing tool: ${message}` }],
+          isError: true,
         };
       }
     });
+
+    return server;
   }
 
-  private logClientState(context: string) {
-    info(`Discord client state [${context}]: ${JSON.stringify({
-      isReady: this.client.isReady(),
-      hasToken: !!this.client.token,
-      user: this.client.user ? {
-        id: this.client.user.id,
-        tag: this.client.user.tag,
-      } : null
-    })}`);
+  async start(): Promise<void> {
+    info(`Discord client ready: ${this.client.isReady()}`);
+    await this.transport.start(() => this.createServer());
   }
 
-  async start() {
-    // Add client to server context so transport can access it
-    (this.server as any)._context = { client: this.client };
-    (this.server as any).client = this.client;
-    
-    // Setup periodic client state logging
-    this.clientStatusInterval = setInterval(() => {
-      this.logClientState("periodic check");
-    }, 10000);
-    
-    await this.transport.start(this.server);
-  }
-
-  async stop() {
-    // Clear the periodic check interval
-    if (this.clientStatusInterval) {
-      clearInterval(this.clientStatusInterval);
-      this.clientStatusInterval = null;
-    }
-    
+  async stop(): Promise<void> {
     await this.transport.stop();
   }
-} 
+}
