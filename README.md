@@ -34,9 +34,11 @@ MCP-Discord provides the following Discord-related functionalities:
 
 ## Table of Contents
 
+- [Compatibility](#compatibility)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Usage with Claude/Cursor](#usage-with-claudecursor)
 - [Tools Documentation](#tools-documentation)
   - [Basic Functions](#basic-functions)
   - [Channel Management](#channel-management)
@@ -51,6 +53,7 @@ MCP-Discord provides the following Discord-related functionalities:
   - [Invite Management](#invite-management)
   - [Emoji Management](#emoji-management)
   - [Category Management](#category-management)
+  - [Channel Extras](#channel-extras)
 - [Development](#development)
 - [License](#license)
 - [Attribution](#attribution)
@@ -75,40 +78,48 @@ MCP-Discord provides the following Discord-related functionalities:
   - Guild Voice States Intent enabled
   - Guild Invites Intent enabled
   - Guild Moderation Intent enabled
-- Permissions required in your Discord server:
+- Permissions required in your Discord server depend on the tools you use:
 
   #### Easiest Setup
   - Administrator (Recommended for quick setup and full functionality)
 
-  #### Or, select only the required permissions:
+  #### Suggested full feature set
+  Grant only the permissions needed for the tools you intend to use:
+
+  - Create Instant Invite
+  - Kick Members
+  - Ban Members
+  - Manage Server
+  - Manage Channels
+  - Add Reactions
+  - View Audit Log
+  - View Channel
   - Send Messages
+  - Read Message History
   - Send Polls
   - Pin Messages
   - Create Public Threads
   - Send Messages in Threads
   - Manage Messages
   - Manage Threads
-  - Manage Channels
   - Manage Webhooks
-  - Add Reactions
-  - View Channel
-  - Kick Members
-  - Ban Members
   - Manage Roles
   - Manage Nicknames
+  - Moderate Members
   - Move Members
   - Mute Members
   - Deafen Members
-  - Manage Emojis and Stickers
-  - Create Instant Invite
-  - View Audit Log
+  - Create Expressions
+  - Manage Expressions
+  - Use External Emojis
+  - Mention Everyone (only if the bot must send `@everyone` or `@here`)
 
 - Add your Discord bot to your server
   - To add your Discord bot to your server, use one of the following invite links (replace `INSERT_CLIENT_ID_HERE` with your bot's client ID):
     - **Administrator (full access):**
         https://discord.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=8
-    - **Custom permissions (minimum required):**
-        https://discord.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=52076489808
+    - **Suggested full feature set:**
+        https://discord.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot&permissions=2824973832367351
 
 > **Note:**  
 > According to Discord's security model, a bot can only access information from servers it has been explicitly added to.  
@@ -117,28 +128,26 @@ MCP-Discord provides the following Discord-related functionalities:
 
 ## Installation
 
-### Installing via NPM
+### npm package status
 
-You can use it with the following command:
-```bash
-npx mcp-discord --config ${DISCORD_TOKEN}
-```
-
-For more details, you can check out the [NPM Package](https://www.npmjs.com/package/mcp-discord).
+This enhanced fork is not published under the `mcp-discord` package name. Running `npx mcp-discord` currently installs the [upstream npm package](https://www.npmjs.com/package/mcp-discord), which does not include this fork's Components V2 and newer tools. Use the Docker image or install from source instead.
 
 ### Installing via Docker
 
-You can run the enhanced mcp-discord using Docker with a multi-stage build for optimal size.
+The public Docker image is available as `skuldgerry/discord-mcp:2.0.0`. You can pull it or build the same tag locally:
 
 ```bash
-# Build the image
-docker build -t skuldgerry/discord-mcp:1.4.0 .
+# Pull the published image
+docker pull skuldgerry/discord-mcp:2.0.0
+
+# Or build it locally
+docker build -t skuldgerry/discord-mcp:2.0.0 .
 
 # Run locally with the Discord token supplied only at runtime
 docker run --rm --name mcp-discord \
   -e DISCORD_TOKEN=your_discord_bot_token \
   -p 127.0.0.1:8080:8080 \
-  skuldgerry/discord-mcp:1.4.0
+  skuldgerry/discord-mcp:2.0.0
 ```
 
 **Features:**
@@ -148,7 +157,7 @@ docker run --rm --name mcp-discord \
 - Built-in health check at `/healthz`
 - HTTP transport on port 8080 by default
 
-The loopback port binding keeps the unauthenticated HTTP endpoint local to the Docker host. For a trusted LAN deployment, replace `127.0.0.1:8080:8080` with `8080:8080`.
+The MCP endpoint is `http://127.0.0.1:8080/mcp`. The loopback port binding keeps the unauthenticated HTTP endpoint local to the Docker host. For a trusted LAN deployment, replace `127.0.0.1:8080:8080` with `8080:8080`.
 
 ### Manual Installation
 ```bash
@@ -199,9 +208,11 @@ node build/index.js --transport http --port 3000 --config "your_discord_bot_toke
 
 ## Usage with Claude/Cursor
 
-### Docker
+Command-based MCP configurations communicate with the launched process over stdio. Do not start an HTTP transport from a `"command"` entry.
 
-You can use Docker containers with both Claude and Cursor:
+### Docker over stdio
+
+This configuration works with command-based clients and passes the token from the client process environment into the container:
 
 ```json
 {
@@ -211,62 +222,44 @@ You can use Docker containers with both Claude and Cursor:
             "args": [
                 "run",
                 "--rm",
+                "-i",
+                "--no-healthcheck",
                 "-e",
-                "DISCORD_TOKEN=your_discord_bot_token",
-                "-p",
-                "8080:8080",
-                "skuldgerry/discord-mcp:1.4.0",
+                "DISCORD_TOKEN",
+                "skuldgerry/discord-mcp:2.0.0",
                 "--transport",
-                "http",
-                "--port",
-                "8080"
-            ]
+                "stdio"
+            ],
+            "env": {
+                "DISCORD_TOKEN": "your_discord_bot_token"
+            }
         }
     }
 }
 ```
 
-### Claude
+`--no-healthcheck` disables the image's HTTP health check because this container is intentionally running in stdio mode.
 
-1. Using stdio transport:
+### Claude over native stdio
+
 ```json
 {
     "mcpServers": {
         "discord": {
             "command": "node",
             "args": [
-                "path/to/discord-mcp/build/index.js",
-                "--config",
-                "your_discord_bot_token"
-            ]
+                "path/to/discord-mcp/build/index.js"
+            ],
+            "env": {
+                "DISCORD_TOKEN": "your_discord_bot_token"
+            }
         }
     }
 }
 ```
 
-2. Using streamable HTTP transport:
-```json
-{
-    "mcpServers": {
-        "discord": {
-            "command": "node",
-            "args": [
-                "path/to/discord-mcp/build/index.js",
-                "--transport",
-                "http",
-                "--port",
-                "3000",
-                "--config",
-                "your_discord_bot_token"
-            ]
-        }
-    }
-}
-```
+### Cursor over native stdio
 
-### Cursor
-
-1. Using stdio transport:
 ```json
 {
     "mcpServers": {
@@ -275,36 +268,25 @@ You can use Docker containers with both Claude and Cursor:
             "args": [
                 "/c",
                 "node",
-                "path/to/discord-mcp/build/index.js",
-                "--config",
-                "your_discord_bot_token"
-            ]
+                "path/to/discord-mcp/build/index.js"
+            ],
+            "env": {
+                "DISCORD_TOKEN": "your_discord_bot_token"
+            }
         }
     }
 }
 ```
 
-2. Using streamable HTTP transport:
-```json
-{
-    "mcpServers": {
-        "discord": {
-            "command": "cmd",
-            "args": [
-                "/c",
-                "node",
-                "path/to/discord-mcp/build/index.js",
-                "--transport",
-                "http",
-                "--port",
-                "3000",
-                "--config",
-                "your_discord_bot_token"
-            ]
-        }
-    }
-}
+### Streamable HTTP
+
+Start the server independently with Docker as shown in [Installing via Docker](#installing-via-docker), or from source:
+
+```bash
+node build/index.js --transport http --port 8080 --config "your_discord_bot_token"
 ```
+
+Configure URL-capable MCP clients to use `http://127.0.0.1:8080/mcp`. The exact URL configuration key depends on the client. This transport is stateless and accepts `POST` requests; `GET` and `DELETE` on `/mcp` return `405 Method Not Allowed`.
 
 ## Tools Documentation
 
@@ -375,6 +357,8 @@ You can use Docker containers with both Claude and Cursor:
 - `discord_move_voice`: Move a member to a specific voice channel
 - `discord_voice_mute`: Server mute or unmute a member in voice
 - `discord_voice_deafen`: Server deafen or undeafen a member in voice
+- `discord_disconnect_member`: Legacy compatibility alias for `discord_disconnect_voice`
+- `discord_move_member`: Legacy compatibility alias for `discord_move_voice`
 
 ### Moderation Tools
 
@@ -434,7 +418,7 @@ This enhanced version is based on the original [mcp-discord](https://github.com/
 ### Modifications
 
 This fork includes extensive enhancements added with AI assistance:
-- 40+ additional Discord tools for comprehensive server management
+- 68 advertised Discord tools for comprehensive server management
 - Enhanced moderation capabilities (kick, ban, timeout, softban, bulk operations)
 - Complete role management system (create, edit, delete, assign, remove)
 - Voice channel operations (disconnect, move, mute, deafen)
@@ -445,4 +429,4 @@ This fork includes extensive enhancements added with AI assistance:
 - Improved error handling and type safety
 - Multi-stage Docker build optimization
 
-All modifications maintain compatibility with the original MCP protocol and Discord.js v14.
+All modifications use Discord API v10 through `discord.js` 14.27 and Model Context Protocol through `@modelcontextprotocol/sdk` 1.29.
