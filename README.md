@@ -132,19 +132,23 @@ You can run the enhanced mcp-discord using Docker with a multi-stage build for o
 
 ```bash
 # Build the image
-docker build -t skuldgerry/discord-mcp:1.0.0 .
+docker build -t skuldgerry/discord-mcp:1.4.0 .
 
-# Run with environment variable
-docker run -e DISCORD_TOKEN=your_discord_bot_token -p 8080:8080 skuldgerry/discord-mcp:1.0.0
-
-# Or run with command line config
-docker run -p 8080:8080 skuldgerry/discord-mcp:1.0.0 --config "your_discord_bot_token"
+# Run locally with the Discord token supplied only at runtime
+docker run --rm --name mcp-discord \
+  -e DISCORD_TOKEN=your_discord_bot_token \
+  -p 127.0.0.1:8080:8080 \
+  skuldgerry/discord-mcp:1.4.0
 ```
 
 **Features:**
 - Multi-stage Docker build for minimal image size
 - Production dependencies only in final image
+- Runs as the unprivileged `node` user
+- Built-in health check at `/healthz`
 - HTTP transport on port 8080 by default
+
+The loopback port binding keeps the unauthenticated HTTP endpoint local to the Docker host. For a trusted LAN deployment, replace `127.0.0.1:8080:8080` with `8080:8080`.
 
 ### Manual Installation
 ```bash
@@ -211,7 +215,7 @@ You can use Docker containers with both Claude and Cursor:
                 "DISCORD_TOKEN=your_discord_bot_token",
                 "-p",
                 "8080:8080",
-                "skuldgerry/discord-mcp:1.0.0",
+                "skuldgerry/discord-mcp:1.4.0",
                 "--transport",
                 "http",
                 "--port",

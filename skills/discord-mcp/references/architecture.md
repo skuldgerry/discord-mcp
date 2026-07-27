@@ -28,6 +28,14 @@ HTTP is intentionally unauthenticated in the current internal deployment phase a
 - MCP SDK 1.29 with protocol negotiation handled by the SDK, including the stable 2025-11-25 revision.
 - `structuredContent` is returned by the new message tools and selected existing read/role tools while text content remains available for older MCP clients.
 
+## Container runtime
+
+- The Docker image uses Node 24 on Alpine 3.24, builds TypeScript in a separate stage, and installs only production dependencies in the runner.
+- The runner uses the unprivileged `node` user and exposes the stateless HTTP MCP endpoint on port 8080.
+- `GET /healthz` is the container health check; MCP remains at `POST /mcp`.
+- Prefer `DISCORD_TOKEN` as a runtime environment variable. Do not bake it into the image or place it in Compose/build arguments.
+- Bind `127.0.0.1:8080:8080` for host-local use. Use a wider port binding only on a trusted network or behind an authenticated proxy.
+
 ## Discord intents
 
 The client requests Guilds, GuildMessages, MessageContent, GuildMembers, GuildBans, GuildVoiceStates, GuildPresences, GuildInvites, and GuildModeration. Message Content, Server Members, and Presence are privileged intents and may need enabling in the application settings. A login error about privileged intents is a portal/configuration failure, not a tool-dispatch failure.

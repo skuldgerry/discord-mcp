@@ -28,6 +28,9 @@ export class StreamableHttpTransport {
         this.setupEndpoints();
     }
     setupEndpoints() {
+        this.app.get("/healthz", (_req, res) => {
+            res.status(200).json({ status: "ok" });
+        });
         this.app.post("/mcp", async (req, res) => {
             if (!this.serverFactory) {
                 res.status(503).json({

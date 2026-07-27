@@ -47,3 +47,7 @@ Confirm guild, member, and destination voice channel before moving a member. Mut
 4. Execute one mutation at a time.
 5. Verify current state before retrying or continuing dependent changes.
 6. Report completed, skipped, and failed actions separately.
+
+## Docker workflow
+
+Build from the repository root so `package.json`, `package-lock.json`, `tsconfig.json`, and `src/` are all in the Docker context. Use the simple runtime form documented in the README with `DISCORD_TOKEN` supplied through `-e`. If `npm ci` reports a missing lockfile after the Docker `COPY` step succeeded, inspect the lockfile inside the selected Git ref/build context for truncation or invalid JSON before changing dependency versions.

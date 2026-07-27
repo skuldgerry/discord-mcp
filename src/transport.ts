@@ -41,6 +41,10 @@ export class StreamableHttpTransport implements MCPTransport {
   }
 
   private setupEndpoints(): void {
+    this.app.get("/healthz", (_req: Request, res: Response) => {
+      res.status(200).json({ status: "ok" });
+    });
+
     this.app.post("/mcp", async (req: Request, res: Response) => {
       if (!this.serverFactory) {
         res.status(503).json({
