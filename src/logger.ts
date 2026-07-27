@@ -1,13 +1,6 @@
 export function log(message: string, level: 'info' | 'error' = 'info') {
-    const logMessage = {
-        jsonrpc: '2.0',
-        method: 'log',
-        params: {
-            level,
-            message
-        }
-    };
-    process.stdout.write(JSON.stringify(logMessage) + '\n');
+    const timestamp = new Date().toISOString();
+    process.stderr.write(`[${timestamp}] [${level}] ${message}\n`);
 }
 
 export function info(message: string) {

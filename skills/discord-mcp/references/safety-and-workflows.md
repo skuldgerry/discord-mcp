@@ -11,11 +11,17 @@
 
 ## Discovery
 
-Start with `discord_list_servers`. Use `discord_get_server_info` for channel structure and `discord_list_roles` or `discord_list_members` when the task depends on role/member identity. Preserve returned snowflake IDs as strings.
+Start with `discord_list_servers`. Use `discord_get_server_info` for channel structure and `discord_list_roles` or `discord_list_members` when the task depends on role/member identity. Use `discord_get_bot_permissions` before a multi-step workflow that depends on channel-specific permissions. Preserve returned snowflake IDs as strings.
 
 ## Messaging and forums
 
-Resolve the target channel/thread first. For reads, keep limits narrow. Before deleting a message or forum post, verify its ID and context. For webhook sends, obtain tokens from an approved secret source and do not echo them.
+Resolve the target channel/thread first. For reads, keep limits narrow; use `discord_get_message` when exact flags, Components V2, attachments, or poll state matter. Before deleting a message or forum post, verify its ID and context. For webhook sends, obtain tokens from an approved secret source and do not echo them.
+
+`discord_send` is the canonical general message tool. Keep the legacy `message` field only for compatibility; prefer `content` for new plain-text calls and typed `components` for Components V2. Pass `allowedMentions: {}` when generated content must not ping users, roles, or everyone. Use `suppressNotifications` only when silent delivery matches the user's intent.
+
+Components V2 messages cannot be converted back to legacy content after the `IsComponentsV2` flag is set. Edit them with `discord_edit_message` and a `text_display` component. The edit and poll-ending tools intentionally reject messages not authored by the bot.
+
+Forwarding preserves a native message snapshot and can reproduce content in another channel, so confirm the source and target. Crossposting is valid only for Announcement channels. Poll creation and early termination are visible mutations; confirm the question, answers, duration, and multiselect setting before sending.
 
 ## Moderation
 
@@ -26,6 +32,8 @@ Bulk deletion is especially risky: confirm the channel, count, and filters; expl
 ## Channels, roles, invites, and webhooks
 
 Creating is usually reversible but visible; deletion is destructive. Before deletion, resolve the object and state its name plus ID. Role operations can fail when the bot's highest role is below the target role. Invite creation should use the narrowest lifetime and use count consistent with the request.
+
+Role `colors` supports primary, secondary, and tertiary colors. Prefer it over the legacy `color` field, and read the role back after setting a gradient because Discord applies eligibility and visual-style constraints.
 
 ## Voice
 

@@ -34,7 +34,15 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 | `discord_edit_category` | Edits an existing Discord category (name and position). | `categoryId`*, `name`, `position`, `reason` |
 | `discord_delete_category` | Deletes a Discord category by ID. | `categoryId`*, `reason` |
 | `discord_login` | Logs in to Discord using the configured token | `token` |
-| `discord_send` | Sends a message to a specified Discord text channel | `channelId`*, `message`* |
+| `discord_send` | Sends a Discord message. Supports legacy text, typed Components V2, empty allowed_mentions, and suppressed notifications. | `channelId`*, `message`, `content`, `components`, `allowedMentions`, `suppressNotifications` |
+| `discord_edit_message` | Edits a message authored by this bot, using text or the same typed Components V2 model as discord_send. | `channelId`*, `messageId`*, `message`, `content`, `components`, `allowedMentions` |
+| `discord_get_message` | Gets one Discord message with flags, Components V2, attachments, embeds, poll data, and bot editability. | `channelId`*, `messageId`* |
+| `discord_get_bot_permissions` | Gets the bot's effective guild or channel permissions and common Discord capabilities. | `guildId`*, `channelId` |
+| `discord_forward_message` | Forwards an existing Discord message to another channel using the native message snapshot. | `sourceChannelId`*, `messageId`*, `targetChannelId`* |
+| `discord_crosspost_message` | Publishes a message from an Announcement channel. | `channelId`*, `messageId`* |
+| `discord_send_poll` | Sends a native Discord poll with typed answers, duration, mention controls, and optional silent delivery. | `channelId`*, `question`*, `answers`*, `durationHours`*, `allowMultiselect`, `allowedMentions`, `suppressNotifications` |
+| `discord_end_poll` | Ends a native Discord poll authored by this bot. | `channelId`*, `messageId`* |
+| `discord_get_poll_voters` | Lists users who voted for one answer in a native Discord poll. | `channelId`*, `messageId`*, `answerId`*, `limit`, `after` |
 | `discord_get_forum_channels` | Lists all forum channels in a specified Discord server (guild) | `guildId`* |
 | `discord_create_forum_post` | Creates a new post in a Discord forum channel with optional tags | `forumChannelId`*, `title`*, `content`*, `tags` |
 | `discord_get_forum_post` | Retrieves details about a forum post including its messages | `threadId`* |
@@ -61,6 +69,6 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 | `discord_move_member` | Moves a member to a specific voice channel | `guildId`*, `userId`*, `channelId`*, `reason` |
 | `discord_add_role` | Adds a role to a member | `guildId`*, `userId`*, `roleId`*, `reason` |
 | `discord_remove_role` | Removes a role from a member | `guildId`*, `userId`*, `roleId`*, `reason` |
-| `discord_create_role` | Creates a role in a guild | `guildId`*, `name`*, `color`, `hoist`, `mentionable`, `permissions`, `reason` |
-| `discord_edit_role` | Edits a role in a guild | `guildId`*, `roleId`*, `name`, `color`, `hoist`, `mentionable`, `permissions`, `reason` |
+| `discord_create_role` | Creates a role in a guild | `guildId`*, `name`*, `color`, `colors`, `hoist`, `mentionable`, `permissions`, `reason` |
+| `discord_edit_role` | Edits a role in a guild | `guildId`*, `roleId`*, `name`, `color`, `colors`, `hoist`, `mentionable`, `permissions`, `reason` |
 | `discord_delete_role` | Deletes a role in a guild | `guildId`*, `roleId`*, `reason` |
