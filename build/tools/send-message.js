@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, MessageFlags, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder, ThumbnailBuilder, } from "discord.js";
 import { CrosspostMessageSchema, EditMessageSchema, EndPollSchema, ForwardMessageSchema, GetBotPermissionsSchema, GetMessageSchema, GetPollVotersSchema, SendMessageSchema, SendPollSchema, } from "../schemas.js";
 import { handleDiscordError } from "../errorHandler.js";
-function textAndStructured(summary, data) {
+export function textAndStructured(summary, data) {
     return {
         content: [{ type: "text", text: `${summary}\n${JSON.stringify(data, null, 2)}` }],
         structuredContent: data,
@@ -98,6 +98,23 @@ function toAllowedMentions(input) {
         ...(input.repliedUser !== undefined ? { repliedUser: input.repliedUser } : {}),
     };
 }
+export function buildMessageCreatePayload(args) {
+    const isComponentsV2 = args.components !== undefined;
+    const flags = [
+        ...(isComponentsV2 ? ["IsComponentsV2"] : []),
+        ...(args.suppressNotifications ? ["SuppressNotifications"] : []),
+    ];
+    const payload = {
+        ...(isComponentsV2
+            ? { components: args.components.map(buildComponent) }
+            : { content: args.message ?? args.content }),
+        ...(args.allowedMentions !== undefined
+            ? { allowedMentions: toAllowedMentions(args.allowedMentions) }
+            : {}),
+        ...(flags.length > 0 ? { flags } : {}),
+    };
+    return { payload, isComponentsV2 };
+}
 async function getMessageManager(client, channelId) {
     const channel = await client.channels.fetch(channelId);
     if (!channel || !channel.isTextBased() || !("messages" in channel)) {
@@ -153,20 +170,7 @@ export const sendMessageHandler = async (rawArgs, { client }) => {
         if (!channel || !channel.isTextBased() || !("send" in channel)) {
             throw new Error(`Cannot find sendable text channel ID: ${args.channelId}`);
         }
-        const isComponentsV2 = args.components !== undefined;
-        const flags = [
-            ...(isComponentsV2 ? ["IsComponentsV2"] : []),
-            ...(args.suppressNotifications ? ["SuppressNotifications"] : []),
-        ];
-        const payload = {
-            ...(isComponentsV2
-                ? { components: args.components.map(buildComponent) }
-                : { content: args.message ?? args.content }),
-            ...(args.allowedMentions !== undefined
-                ? { allowedMentions: toAllowedMentions(args.allowedMentions) }
-                : {}),
-            ...(flags.length > 0 ? { flags } : {}),
-        };
+        const { payload, isComponentsV2 } = buildMessageCreatePayload(args);
         const sent = await channel.send(payload);
         return textAndStructured("Message sent successfully.", {
             channelId: sent.channelId,

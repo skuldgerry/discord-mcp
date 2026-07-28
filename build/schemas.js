@@ -2,7 +2,7 @@ import { z } from "zod";
 export const DiscordLoginSchema = z.object({
     token: z.string().optional()
 });
-const DiscordIdSchema = z.string().regex(/^\d{17,20}$/, "Expected a Discord snowflake ID");
+export const DiscordIdSchema = z.string().regex(/^\d{17,20}$/, "Expected a Discord snowflake ID");
 const HttpUrlSchema = z.string().url().refine(value => value.startsWith("https://") || value.startsWith("http://"), "Expected an HTTP or HTTPS URL");
 export const AllowedMentionsSchema = z.object({
     parse: z.array(z.enum(["roles", "users", "everyone"])).max(3).optional(),
@@ -73,6 +73,35 @@ export const MessageComponentSchema = z.discriminatedUnion("type", [
     LinkButtonsSchema,
     ContainerSchema
 ]);
+export const PermissionOverwriteSchema = z.object({
+    id: DiscordIdSchema,
+    type: z.enum(["role", "member"]),
+    allow: z.array(z.string().min(1)).max(100).optional(),
+    deny: z.array(z.string().min(1)).max(100).optional()
+}).strict().superRefine((value, context) => {
+    const allowed = new Set(value.allow ?? []);
+    for (const permission of value.deny ?? []) {
+        if (allowed.has(permission)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["deny"],
+                message: `Permission ${permission} cannot be both allowed and denied`
+            });
+        }
+    }
+});
+const PermissionOverwritesSchema = z.array(PermissionOverwriteSchema).max(100);
+function validateParentAliases(value, context) {
+    if (value.parentId !== undefined &&
+        value.categoryId !== undefined &&
+        value.parentId !== value.categoryId) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["categoryId"],
+            message: "parentId and categoryId must match when both are provided"
+        });
+    }
+}
 export const SendMessageSchema = z.object({
     channelId: DiscordIdSchema,
     message: z.string().min(1).max(2000).optional(),
@@ -170,23 +199,69 @@ export const ReplyToForumSchema = z.object({
     message: z.string()
 });
 export const CreateTextChannelSchema = z.object({
-    guildId: z.string(),
-    channelName: z.string(),
-    topic: z.string().optional(),
+    guildId: DiscordIdSchema,
+    channelName: z.string().min(1).max(100),
+    topic: z.string().max(1024).optional(),
+    parentId: DiscordIdSchema.nullable().optional(),
+    categoryId: DiscordIdSchema.nullable().optional(),
+    position: z.number().int().min(0).optional(),
+    permissionOverwrites: PermissionOverwritesSchema.optional(),
     reason: z.string().optional()
-});
+}).superRefine(validateParentAliases);
 // Category schemas
 export const CreateCategorySchema = z.object({
-    guildId: z.string(),
-    name: z.string(),
-    position: z.number().optional(),
+    guildId: DiscordIdSchema,
+    name: z.string().min(1).max(100),
+    position: z.number().int().min(0).optional(),
+    permissionOverwrites: PermissionOverwritesSchema.optional(),
     reason: z.string().optional()
 });
 export const EditCategorySchema = z.object({
-    categoryId: z.string(),
-    name: z.string().optional(),
-    position: z.number().optional(),
+    categoryId: DiscordIdSchema,
+    name: z.string().min(1).max(100).optional(),
+    position: z.number().int().min(0).optional(),
+    permissionOverwrites: PermissionOverwritesSchema.optional(),
     reason: z.string().optional()
+});
+export const EditChannelSchema = z.object({
+    channelId: DiscordIdSchema,
+    name: z.string().min(1).max(100).optional(),
+    topic: z.string().max(1024).nullable().optional(),
+    parentId: DiscordIdSchema.nullable().optional(),
+    categoryId: DiscordIdSchema.nullable().optional(),
+    position: z.number().int().min(0).optional(),
+    permissionOverwrites: PermissionOverwritesSchema.optional(),
+    reason: z.string().optional()
+}).superRefine((value, context) => {
+    validateParentAliases(value, context);
+    if (value.name === undefined &&
+        value.topic === undefined &&
+        value.parentId === undefined &&
+        value.categoryId === undefined &&
+        value.position === undefined &&
+        value.permissionOverwrites === undefined) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Provide at least one channel field to edit"
+        });
+    }
+});
+export const SetChannelPermissionOverwritesSchema = z.object({
+    channelId: DiscordIdSchema,
+    permissionOverwrites: PermissionOverwritesSchema,
+    reason: z.string().optional()
+});
+export const CutoverCategoriesSchema = z.object({
+    oldCategoryId: DiscordIdSchema,
+    newCategoryId: DiscordIdSchema,
+    oldPosition: z.number().int().min(0),
+    newPosition: z.number().int().min(0),
+    oldPermissionOverwrites: PermissionOverwritesSchema,
+    newPermissionOverwrites: PermissionOverwritesSchema,
+    reason: z.string().optional()
+}).refine(value => value.oldCategoryId !== value.newCategoryId, {
+    path: ["newCategoryId"],
+    message: "Old and new categories must be different"
 });
 export const DeleteCategorySchema = z.object({
     categoryId: z.string(),
@@ -433,8 +508,24 @@ export const UnpinMessageSchema = z.object({
     messageId: z.string()
 });
 export const DMMemberSchema = z.object({
-    userId: z.string(),
-    message: z.string()
+    userId: DiscordIdSchema,
+    message: z.string().min(1).max(2000).optional(),
+    content: z.string().min(1).max(2000).optional(),
+    components: z.array(MessageComponentSchema).min(1).max(40).optional(),
+    allowedMentions: AllowedMentionsSchema.optional(),
+    suppressNotifications: z.boolean().optional()
+}).superRefine((value, context) => {
+    const modes = [
+        value.message !== undefined,
+        value.content !== undefined,
+        value.components !== undefined
+    ].filter(Boolean).length;
+    if (modes !== 1) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Provide exactly one of message, content, or components"
+        });
+    }
 });
 export const GetChannelInvitesSchema = z.object({
     channelId: z.string()

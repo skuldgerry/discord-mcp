@@ -179,7 +179,48 @@ const messageResultSchema = {
     messageId: { type: "string" },
     url: { type: "string" }
   },
-  required: ["channelId", "messageId"]
+  required: ["channelId", "messageId", "url"]
+};
+
+const permissionOverwriteSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    id: discordIdSchema,
+    type: { type: "string", enum: ["role", "member"] },
+    allow: {
+      type: "array",
+      maxItems: 100,
+      items: { type: "string" },
+      description: "Discord permission names to allow, for example ViewChannel."
+    },
+    deny: {
+      type: "array",
+      maxItems: 100,
+      items: { type: "string" },
+      description: "Discord permission names to deny, for example ViewChannel."
+    }
+  },
+  required: ["id", "type"]
+};
+
+const permissionOverwritesSchema = {
+  type: "array",
+  maxItems: 100,
+  items: permissionOverwriteSchema,
+  description: "Complete ordered overwrite set. Use the guild ID with type=role for @everyone."
+};
+
+const channelResultSchema = {
+  type: "object",
+  properties: {
+    guildId: { type: "string" },
+    channelId: { type: "string" },
+    categoryId: { type: ["string", "null"] },
+    parentId: { type: ["string", "null"] },
+    position: { type: ["number", "null"] }
+  },
+  required: ["guildId", "channelId"]
 };
 
 export const toolList = [
@@ -192,10 +233,12 @@ export const toolList = [
         guildId: { type: "string" },
         name: { type: "string" },
         position: { type: "number" },
+        permissionOverwrites: permissionOverwritesSchema,
         reason: { type: "string" }
       },
       required: ["guildId", "name"]
-    }
+    },
+    outputSchema: channelResultSchema
   },
   // Emojis
   {
@@ -279,12 +322,34 @@ export const toolList = [
   // DMs
   {
     name: "discord_dm_member",
-    description: "Send a direct message to a user",
+    description: "Sends a DM using the same text or typed Components V2 model as discord_send, including Media Gallery, mention controls, and silent delivery.",
     inputSchema: {
       type: "object",
-      properties: { userId: { type: "string" }, message: { type: "string" } },
-      required: ["userId", "message"]
-    }
+      additionalProperties: false,
+      properties: {
+        userId: discordIdSchema,
+        message: {
+          type: "string",
+          minLength: 1,
+          maxLength: 2000,
+          description: "Legacy text field retained for backward compatibility."
+        },
+        content: { type: "string", minLength: 1, maxLength: 2000 },
+        components: componentsSchema,
+        allowedMentions: allowedMentionsSchema,
+        suppressNotifications: {
+          type: "boolean",
+          description: "Adds Discord's SUPPRESS_NOTIFICATIONS message flag."
+        }
+      },
+      required: ["userId"],
+      oneOf: [
+        { required: ["message"] },
+        { required: ["content"] },
+        { required: ["components"] }
+      ]
+    },
+    outputSchema: messageResultSchema
   },
   // Channel invites and vanity
   {
@@ -429,17 +494,19 @@ export const toolList = [
   },
   {
     name: "discord_edit_category",
-    description: "Edits an existing Discord category (name and position).",
+    description: "Edits an existing Discord category, including position and complete permission overwrites.",
     inputSchema: {
       type: "object",
       properties: {
         categoryId: { type: "string" },
         name: { type: "string" },
         position: { type: "number" },
+        permissionOverwrites: permissionOverwritesSchema,
         reason: { type: "string" }
       },
       required: ["categoryId"]
-    }
+    },
+    outputSchema: channelResultSchema
   },
   {
     name: "discord_delete_category",
@@ -693,15 +760,94 @@ export const toolList = [
   },
   {
     name: "discord_create_text_channel",
-    description: "Creates a new text channel in a Discord server with an optional topic",
+    description: "Creates a text channel with optional parent/category, position, and permission overwrites.",
     inputSchema: {
       type: "object",
+      additionalProperties: false,
       properties: {
-        guildId: { type: "string" },
-        channelName: { type: "string" },
-        topic: { type: "string" }
+        guildId: discordIdSchema,
+        channelName: { type: "string", minLength: 1, maxLength: 100 },
+        topic: { type: "string", maxLength: 1024 },
+        parentId: {
+          oneOf: [discordIdSchema, { type: "null" }],
+          description: "Parent category ID; null creates at the guild root."
+        },
+        categoryId: {
+          oneOf: [discordIdSchema, { type: "null" }],
+          description: "Alias for parentId."
+        },
+        position: { type: "integer", minimum: 0 },
+        permissionOverwrites: permissionOverwritesSchema,
+        reason: { type: "string" }
       },
       required: ["guildId", "channelName"]
+    },
+    outputSchema: channelResultSchema
+  },
+  {
+    name: "discord_edit_channel",
+    description: "Edits or moves a guild channel, including parent/category, position, topic, and complete permission overwrites.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        name: { type: "string", minLength: 1, maxLength: 100 },
+        topic: { type: ["string", "null"], maxLength: 1024 },
+        parentId: {
+          oneOf: [discordIdSchema, { type: "null" }],
+          description: "New parent category, or null to move to the guild root."
+        },
+        categoryId: {
+          oneOf: [discordIdSchema, { type: "null" }],
+          description: "Alias for parentId."
+        },
+        position: { type: "integer", minimum: 0 },
+        permissionOverwrites: permissionOverwritesSchema,
+        reason: { type: "string" }
+      },
+      required: ["channelId"]
+    },
+    outputSchema: channelResultSchema
+  },
+  {
+    name: "discord_set_channel_permission_overwrites",
+    description: "Replaces all permission overwrites on a guild channel or category.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        permissionOverwrites: permissionOverwritesSchema,
+        reason: { type: "string" }
+      },
+      required: ["channelId", "permissionOverwrites"]
+    },
+    outputSchema: channelResultSchema
+  },
+  {
+    name: "discord_cutover_categories",
+    description: "Performs a privacy-safe category cutover: hide the old category, reposition both, then reveal the new category.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        oldCategoryId: discordIdSchema,
+        newCategoryId: discordIdSchema,
+        oldPosition: { type: "integer", minimum: 0 },
+        newPosition: { type: "integer", minimum: 0 },
+        oldPermissionOverwrites: permissionOverwritesSchema,
+        newPermissionOverwrites: permissionOverwritesSchema,
+        reason: { type: "string" }
+      },
+      required: [
+        "oldCategoryId",
+        "newCategoryId",
+        "oldPosition",
+        "newPosition",
+        "oldPermissionOverwrites",
+        "newPermissionOverwrites"
+      ]
     }
   },
   {

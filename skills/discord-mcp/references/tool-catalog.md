@@ -4,7 +4,7 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 
 | Tool | Purpose | Arguments |
 |---|---|---|
-| `discord_create_category` | Creates a new category in a Discord server. | `guildId`*, `name`*, `position`, `reason` |
+| `discord_create_category` | Creates a new category in a Discord server. | `guildId`*, `name`*, `position`, `permissionOverwrites`, `reason` |
 | `discord_list_emojis` | List server emojis | `guildId`* |
 | `discord_create_emoji` | Create a custom emoji from an image URL | `guildId`*, `name`*, `imageUrl`*, `reason` |
 | `discord_delete_emoji` | Delete a custom emoji | `guildId`*, `emojiId`*, `reason` |
@@ -15,7 +15,7 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 | `discord_pin_message` | Pin a message in a channel | `channelId`*, `messageId`* |
 | `discord_unpin_message` | Unpin a message in a channel | `channelId`*, `messageId`* |
 | `discord_softban_member` | Ban then immediately unban to purge messages | `guildId`*, `userId`*, `deleteMessageDays`, `reason` |
-| `discord_dm_member` | Send a direct message to a user | `userId`*, `message`* |
+| `discord_dm_member` | Sends a DM using the same text or typed Components V2 model as discord_send, including Media Gallery, mention controls, and silent delivery. | `userId`*, `message`, `content`, `components`, `allowedMentions`, `suppressNotifications` |
 | `discord_get_channel_invites` | List invites for a specific channel | `channelId`* |
 | `discord_get_vanity_url` | Get server vanity URL if available | `guildId`* |
 | `discord_disconnect_voice` | Disconnects a member from their current voice channel | `guildId`*, `userId`*, `reason` |
@@ -31,7 +31,7 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 | `discord_create_invite` | Create an invite link for a channel | `channelId`*, `maxAgeSeconds`, `maxUses`, `temporary`, `reason` |
 | `discord_get_invites` | List server invites | `guildId`* |
 | `discord_get_audit_logs` | Fetch server audit logs | `guildId`*, `limit`, `actionType`, `userId` |
-| `discord_edit_category` | Edits an existing Discord category (name and position). | `categoryId`*, `name`, `position`, `reason` |
+| `discord_edit_category` | Edits an existing Discord category, including position and complete permission overwrites. | `categoryId`*, `name`, `position`, `permissionOverwrites`, `reason` |
 | `discord_delete_category` | Deletes a Discord category by ID. | `categoryId`*, `reason` |
 | `discord_login` | Logs in to Discord using the configured token | `token` |
 | `discord_send` | Sends a Discord message. Supports legacy text, typed Components V2, empty allowed_mentions, and suppressed notifications. | `channelId`*, `message`, `content`, `components`, `allowedMentions`, `suppressNotifications` |
@@ -47,7 +47,10 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 | `discord_create_forum_post` | Creates a new post in a Discord forum channel with optional tags | `forumChannelId`*, `title`*, `content`*, `tags` |
 | `discord_get_forum_post` | Retrieves details about a forum post including its messages | `threadId`* |
 | `discord_reply_to_forum` | Adds a reply to an existing forum post or thread | `threadId`*, `message`* |
-| `discord_create_text_channel` | Creates a new text channel in a Discord server with an optional topic | `guildId`*, `channelName`*, `topic` |
+| `discord_create_text_channel` | Creates a text channel with optional parent/category, position, and permission overwrites. | `guildId`*, `channelName`*, `topic`, `parentId`, `categoryId`, `position`, `permissionOverwrites`, `reason` |
+| `discord_edit_channel` | Edits or moves a guild channel, including parent/category, position, topic, and complete permission overwrites. | `channelId`*, `name`, `topic`, `parentId`, `categoryId`, `position`, `permissionOverwrites`, `reason` |
+| `discord_set_channel_permission_overwrites` | Replaces all permission overwrites on a guild channel or category. | `channelId`*, `permissionOverwrites`*, `reason` |
+| `discord_cutover_categories` | Performs a privacy-safe category cutover: hide the old category, reposition both, then reveal the new category. | `oldCategoryId`*, `newCategoryId`*, `oldPosition`*, `newPosition`*, `oldPermissionOverwrites`*, `newPermissionOverwrites`*, `reason` |
 | `discord_delete_channel` | Deletes a Discord channel with an optional reason | `channelId`*, `reason` |
 | `discord_read_messages` | Retrieves messages from a Discord text channel with a configurable limit | `channelId`*, `limit` |
 | `discord_get_server_info` | Retrieves detailed information about a Discord server including channels and member count | `guildId`* |

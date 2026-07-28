@@ -1,6 +1,7 @@
 import { ToolContext, ToolResponse } from "./types.js";
 import { GetMemberInfoSchema, ListMembersSchema, DMMemberSchema } from "../schemas.js";
 import { handleDiscordError } from "../errorHandler.js";
+import { buildMessageCreatePayload, textAndStructured } from "./send-message.js";
 
 export async function getMemberInfoHandler(args: unknown, context: ToolContext): Promise<ToolResponse> {
   const { guildId, userId } = GetMemberInfoSchema.parse(args);
@@ -42,12 +43,21 @@ export async function listMembersHandler(args: unknown, context: ToolContext): P
 }
 
 export async function dmMemberHandler(args: unknown, context: ToolContext): Promise<ToolResponse> {
-  const { userId, message } = DMMemberSchema.parse(args);
+  const parsed = DMMemberSchema.parse(args);
   try {
     if (!context.client.isReady()) return { content: [{ type: "text", text: "Discord client not logged in." }], isError: true };
-    const user = await context.client.users.fetch(userId);
-    await user.send(message);
-    return { content: [{ type: "text", text: `Sent DM to ${userId}` }] };
+    const user = await context.client.users.fetch(parsed.userId);
+    const channel = await user.createDM();
+    const { payload, isComponentsV2 } = buildMessageCreatePayload(parsed);
+    const sent = await channel.send(payload);
+    return textAndStructured("Direct message sent successfully.", {
+      userId: parsed.userId,
+      channelId: sent.channelId,
+      messageId: sent.id,
+      url: sent.url,
+      componentsV2: isComponentsV2,
+      suppressedNotifications: parsed.suppressNotifications ?? false
+    });
   } catch (error) {
     return handleDiscordError(error);
   }

@@ -22,6 +22,9 @@ import {
 } from './forum.js';
 import {
   createTextChannelHandler,
+  editChannelHandler,
+  setChannelPermissionOverwritesHandler,
+  cutoverCategoriesHandler,
   deleteChannelHandler,
   readMessagesHandler,
   getServerInfoHandler,
@@ -108,6 +111,9 @@ export const toolHandlers: Readonly<Record<string, ToolHandler>> = {
   discord_reply_to_forum: replyToForumHandler,
   discord_delete_forum_post: deleteForumPostHandler,
   discord_create_text_channel: createTextChannelHandler,
+  discord_edit_channel: editChannelHandler,
+  discord_set_channel_permission_overwrites: setChannelPermissionOverwritesHandler,
+  discord_cutover_categories: cutoverCategoriesHandler,
   discord_delete_channel: deleteChannelHandler,
   discord_read_messages: readMessagesHandler,
   discord_get_server_info: getServerInfoHandler,
@@ -181,6 +187,9 @@ export {
   replyToForumHandler,
   deleteForumPostHandler,
   createTextChannelHandler,
+  editChannelHandler,
+  setChannelPermissionOverwritesHandler,
+  cutoverCategoriesHandler,
   deleteChannelHandler,
   readMessagesHandler,
   getServerInfoHandler,
@@ -196,7 +205,6 @@ export {
   editCategoryHandler,
   deleteCategoryHandler,
   listServersHandler,
-  // moderation
   kickMemberHandler,
   banMemberHandler,
   unbanMemberHandler,
@@ -210,34 +218,27 @@ export {
   softbanMemberHandler,
   pinMessageHandler,
   unpinMessageHandler,
-  // roles
   addRoleToMemberHandler,
   removeRoleFromMemberHandler,
   createRoleHandler,
   editRoleHandler,
   deleteRoleHandler,
   listRolesHandler,
-  // voice
   disconnectVoiceHandler,
   moveVoiceHandler,
   voiceMuteHandler,
   voiceDeafenHandler,
-  // members
   getMemberInfoHandler,
   listMembersHandler,
   dmMemberHandler,
-  // invites
   createInviteHandler,
   getInvitesHandler,
   getChannelInvitesHandler,
   getVanityUrlHandler,
-  // audit
   getAuditLogsHandler,
-  // emojis
   listEmojisHandler,
   createEmojiHandler,
   deleteEmojiHandler,
-  // channel extras
   setSlowmodeHandler,
   lockChannelHandler,
   unlockChannelHandler

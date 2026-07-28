@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ChannelType } from "discord.js";
+import { ChannelType, PermissionsBitField } from "discord.js";
 import { ToolContext, ToolResponse } from "./types.js";
 import { 
   CreateTextChannelSchema, 
@@ -8,18 +8,52 @@ import {
   GetServerInfoSchema,
   CreateCategorySchema,
   EditCategorySchema,
+  EditChannelSchema,
+  SetChannelPermissionOverwritesSchema,
+  CutoverCategoriesSchema,
   DeleteCategorySchema,
-  ListServersSchema
+  ListServersSchema,
+  PermissionOverwriteSchema
 } from "../schemas.js";
 import { handleDiscordError } from "../errorHandler.js";
 import { SetSlowmodeSchema, LockChannelSchema, UnlockChannelSchema } from "../schemas.js";
+
+type PermissionOverwriteInput = z.infer<typeof PermissionOverwriteSchema>;
+
+function toPermissionOverwrites(overwrites: PermissionOverwriteInput[]) {
+  return overwrites.map(overwrite => {
+    // Resolve eagerly so invalid Discord permission names fail before any API mutation.
+    const allow = new PermissionsBitField((overwrite.allow ?? []) as any);
+    const deny = new PermissionsBitField((overwrite.deny ?? []) as any);
+    return {
+      id: overwrite.id,
+      type: overwrite.type === "role" ? 0 : 1,
+      allow,
+      deny
+    };
+  });
+}
+
+function resolveParentId(input: {
+  parentId?: string | null;
+  categoryId?: string | null;
+}): string | null | undefined {
+  return input.parentId !== undefined ? input.parentId : input.categoryId;
+}
+
+function structured(summary: string, data: Record<string, unknown>): ToolResponse {
+  return {
+    content: [{ type: "text", text: `${summary}\n${JSON.stringify(data, null, 2)}` }],
+    structuredContent: data
+  };
+}
 
   // Category creation handler
 export async function createCategoryHandler(
   args: unknown,
   context: ToolContext
 ): Promise<ToolResponse> {
-  const { guildId, name, position, reason } = CreateCategorySchema.parse(args);
+  const { guildId, name, position, permissionOverwrites, reason } = CreateCategorySchema.parse(args);
   try {
     if (!context.client.isReady()) {
       return {
@@ -36,11 +70,17 @@ export async function createCategoryHandler(
     }
     const options: any = { name, type: ChannelType.GuildCategory };
     if (typeof position === "number") options.position = position;
+    if (permissionOverwrites !== undefined) {
+      options.permissionOverwrites = toPermissionOverwrites(permissionOverwrites);
+    }
     if (reason) options.reason = reason;
     const category = await guild.channels.create(options);
-    return {
-      content: [{ type: "text", text: `Successfully created category "${name}" with ID: ${category.id}` }]
-    };
+    return structured(`Successfully created category "${name}".`, {
+      guildId: guild.id,
+      categoryId: category.id,
+      channelId: category.id,
+      position: category.position
+    });
   } catch (error) {
     return handleDiscordError(error);
   }
@@ -51,7 +91,7 @@ export async function editCategoryHandler(
   args: unknown,
   context: ToolContext
 ): Promise<ToolResponse> {
-  const { categoryId, name, position, reason } = EditCategorySchema.parse(args);
+  const { categoryId, name, position, permissionOverwrites, reason } = EditCategorySchema.parse(args);
   try {
     if (!context.client.isReady()) {
       return {
@@ -67,13 +107,19 @@ export async function editCategoryHandler(
       };
     }
     const update: any = {};
-    if (name) update.name = name;
+    if (name !== undefined) update.name = name;
     if (typeof position === "number") update.position = position;
+    if (permissionOverwrites !== undefined) {
+      update.permissionOverwrites = toPermissionOverwrites(permissionOverwrites);
+    }
     if (reason) update.reason = reason;
-    await category.edit(update);
-    return {
-      content: [{ type: "text", text: `Successfully edited category with ID: ${categoryId}` }]
-    };
+    const edited = await category.edit(update);
+    return structured("Successfully edited category.", {
+      guildId: edited.guild.id,
+      categoryId: edited.id,
+      channelId: edited.id,
+      position: edited.position
+    });
   } catch (error) {
     return handleDiscordError(error);
   }
@@ -113,7 +159,15 @@ export async function createTextChannelHandler(
   args: unknown, 
   context: ToolContext
 ): Promise<ToolResponse> {
-  const { guildId, channelName, topic, reason } = CreateTextChannelSchema.parse(args);
+  const parsed = CreateTextChannelSchema.parse(args);
+  const {
+    guildId,
+    channelName,
+    topic,
+    position,
+    permissionOverwrites,
+    reason
+  } = parsed;
   try {
     if (!context.client.isReady()) {
       return {
@@ -136,15 +190,163 @@ export async function createTextChannelHandler(
       type: ChannelType.GuildText
     };
     if (topic) channelOptions.topic = topic;
+    const parentId = resolveParentId(parsed);
+    if (parentId !== undefined) channelOptions.parent = parentId;
+    if (position !== undefined) channelOptions.position = position;
+    if (permissionOverwrites !== undefined) {
+      channelOptions.permissionOverwrites = toPermissionOverwrites(permissionOverwrites);
+    }
     if (reason) channelOptions.reason = reason;
     const channel = await guild.channels.create(channelOptions);
 
-    return {
-      content: [{ 
-        type: "text", 
-        text: `Successfully created text channel "${channelName}" with ID: ${channel.id}` 
-      }]
-    };
+    return structured(`Successfully created text channel "${channelName}".`, {
+      guildId: guild.id,
+      channelId: channel.id,
+      parentId: channel.parentId,
+      categoryId: channel.parentId,
+      position: channel.position
+    });
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
+export async function editChannelHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const parsed = EditChannelSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return {
+        content: [{ type: "text", text: "Discord client not logged in." }],
+        isError: true
+      };
+    }
+
+    const channel = await context.client.channels.fetch(parsed.channelId);
+    if (!channel || !("edit" in channel) || !("guild" in channel)) {
+      return {
+        content: [{ type: "text", text: `Cannot find editable guild channel with ID: ${parsed.channelId}` }],
+        isError: true
+      };
+    }
+
+    const update: any = {};
+    if (parsed.name !== undefined) update.name = parsed.name;
+    if (parsed.topic !== undefined) update.topic = parsed.topic;
+    const parentId = resolveParentId(parsed);
+    if (parentId !== undefined) update.parent = parentId;
+    if (parsed.position !== undefined) update.position = parsed.position;
+    if (parsed.permissionOverwrites !== undefined) {
+      update.permissionOverwrites = toPermissionOverwrites(parsed.permissionOverwrites);
+    }
+    if (parsed.reason) update.reason = parsed.reason;
+
+    const edited = await channel.edit(update);
+    return structured("Successfully edited channel.", {
+      guildId: edited.guild.id,
+      channelId: edited.id,
+      parentId: "parentId" in edited ? edited.parentId : null,
+      categoryId: "parentId" in edited ? edited.parentId : null,
+      position: "position" in edited ? edited.position : null
+    });
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
+export async function setChannelPermissionOverwritesHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const { channelId, permissionOverwrites, reason } =
+    SetChannelPermissionOverwritesSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return {
+        content: [{ type: "text", text: "Discord client not logged in." }],
+        isError: true
+      };
+    }
+
+    const channel = await context.client.channels.fetch(channelId);
+    if (!channel || !("permissionOverwrites" in channel) || !("guild" in channel)) {
+      return {
+        content: [{ type: "text", text: `Channel not found or cannot set overwrites: ${channelId}` }],
+        isError: true
+      };
+    }
+
+    await channel.permissionOverwrites.set(toPermissionOverwrites(permissionOverwrites), reason);
+    return structured("Channel permission overwrites replaced.", {
+      guildId: channel.guild.id,
+      channelId,
+      overwriteCount: permissionOverwrites.length
+    });
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
+export async function cutoverCategoriesHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const parsed = CutoverCategoriesSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return {
+        content: [{ type: "text", text: "Discord client not logged in." }],
+        isError: true
+      };
+    }
+
+    const [oldCategory, newCategory] = await Promise.all([
+      context.client.channels.fetch(parsed.oldCategoryId),
+      context.client.channels.fetch(parsed.newCategoryId)
+    ]);
+    if (!oldCategory || oldCategory.type !== ChannelType.GuildCategory) {
+      throw new Error(`Cannot find old category with ID: ${parsed.oldCategoryId}`);
+    }
+    if (!newCategory || newCategory.type !== ChannelType.GuildCategory) {
+      throw new Error(`Cannot find new category with ID: ${parsed.newCategoryId}`);
+    }
+    if (oldCategory.guild.id !== newCategory.guild.id) {
+      throw new Error("Old and new categories must belong to the same guild");
+    }
+    const oldEveryoneOverwrite = parsed.oldPermissionOverwrites.find(overwrite =>
+      overwrite.type === "role" && overwrite.id === oldCategory.guild.id
+    );
+    if (!oldEveryoneOverwrite?.deny?.includes("ViewChannel")) {
+      throw new Error(
+        "oldPermissionOverwrites must deny ViewChannel to the guild @everyone role"
+      );
+    }
+
+    // Safety order: hide/archive the old category first. If a later request fails,
+    // the migration remains private rather than exposing the new WIP category.
+    await oldCategory.permissionOverwrites.set(
+      toPermissionOverwrites(parsed.oldPermissionOverwrites),
+      parsed.reason
+    );
+    await oldCategory.guild.channels.setPositions([
+      { channel: oldCategory.id, position: parsed.oldPosition },
+      { channel: newCategory.id, position: parsed.newPosition }
+    ]);
+    await newCategory.permissionOverwrites.set(
+      toPermissionOverwrites(parsed.newPermissionOverwrites),
+      parsed.reason
+    );
+
+    return structured("Category cutover completed in privacy-safe order.", {
+      guildId: oldCategory.guild.id,
+      oldCategoryId: oldCategory.id,
+      newCategoryId: newCategory.id,
+      oldPosition: parsed.oldPosition,
+      newPosition: parsed.newPosition,
+      safetyOrder: ["hideOld", "reposition", "revealNew"]
+    });
   } catch (error) {
     return handleDiscordError(error);
   }

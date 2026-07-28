@@ -4,6 +4,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "discord.js";
+import { createRequire } from "node:module";
 import { z } from "zod";
 import { toolList } from "./toolList.js";
 import { error, info } from "./logger.js";
@@ -12,6 +13,10 @@ import {
   createToolContext,
   getToolHandler,
 } from "./tools/tools.js";
+
+const packageMetadata = createRequire(import.meta.url)("../package.json") as {
+  version: string;
+};
 
 export class DiscordMCPServer {
   private readonly toolContext;
@@ -27,7 +32,7 @@ export class DiscordMCPServer {
     const server = new Server(
       {
         name: "MCP-Discord",
-        version: "1.4.0",
+        version: packageMetadata.version,
       },
       {
         capabilities: {

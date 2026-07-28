@@ -36,12 +36,29 @@ for (const [label, values] of [
   }
 }
 
-for (const check of [
-  ["Standard MCP dispatch uses the canonical registry", /getToolHandler\(name\)/.test(serverText)],
-  ["HTTP creates the same MCP server through the shared factory", /const server = this\.serverFactory\(\)/.test(transportText)],
-  ["HTTP delegates requests to the SDK Streamable HTTP transport", /transport\.handleRequest\(req,\s*res,\s*req\.body\)/.test(transportText)],
-  ["HTTP contains no independent discord_* dispatch table", !/case\s+["']discord_/.test(transportText)],
-]) {
+const dispatcherChecks = [
+  ["Standard MCP dispatcher uses the canonical registry", /getToolHandler\(name\)/.test(serverText)],
+  [
+    "Stdio dispatcher receives the shared MCP server factory",
+    /async start\(serverFactory: MCPServerFactory\)[\s\S]*?this\.server = serverFactory\(\)[\s\S]*?this\.server\.connect\(this\.transport\)/.test(transportText),
+  ],
+  [
+    "Streamable HTTP dispatcher receives the shared MCP server factory",
+    /this\.serverFactory = serverFactory/.test(transportText) &&
+      /const server = this\.serverFactory\(\)/.test(transportText),
+  ],
+  [
+    "Streamable HTTP POST dispatcher delegates to the SDK transport",
+    /this\.app\.post\(["']\/mcp["'][\s\S]*?transport\.handleRequest\(req,\s*res,\s*req\.body\)/.test(transportText),
+  ],
+  [
+    "Every transport contains no independent discord_* dispatch table",
+    !/case\s+["']discord_/.test(transportText) &&
+      !/discord_[a-z0-9_]+\s*:/.test(transportText),
+  ],
+];
+
+for (const check of dispatcherChecks) {
   console.log(`${check[1] ? "PASS" : "FAIL"}: ${check[0]}`);
   if (!check[1]) failed = true;
 }

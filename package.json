@@ -1,6 +1,6 @@
 {
   "name": "mcp-discord",
-  "version": "1.4.0",
+  "version": "2.1.0",
   "description": "Model Context Protocol (MCP) server for Discord integration, allowing Claude and other MCP clients to interact with Discord",
   "main": "build/index.js",
   "bin": {
@@ -8,7 +8,8 @@
   },
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "audit:dispatch": "node skills/discord-mcp/scripts/audit-dispatch.mjs .",
     "build": "tsc",
     "start": "node build/index.js",
     "dev": "node --loader ts-node/esm src/index.ts",

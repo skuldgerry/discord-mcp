@@ -34,8 +34,12 @@ import type { ToolContext, ToolHandler, ToolResponse } from "./types.js";
 
 type MessageComponentInput = z.infer<typeof MessageComponentSchema>;
 type LinkButtonInput = Extract<MessageComponentInput, { type: "link_buttons" }>["buttons"][number];
+type MessagePayloadInput = Pick<
+  z.infer<typeof SendMessageSchema>,
+  "message" | "content" | "components" | "allowedMentions" | "suppressNotifications"
+>;
 
-function textAndStructured(summary: string, data: Record<string, unknown>): ToolResponse {
+export function textAndStructured(summary: string, data: Record<string, unknown>): ToolResponse {
   return {
     content: [{ type: "text", text: `${summary}\n${JSON.stringify(data, null, 2)}` }],
     structuredContent: data,
@@ -144,6 +148,27 @@ function toAllowedMentions(
   };
 }
 
+export function buildMessageCreatePayload(
+  args: MessagePayloadInput,
+): { payload: MessageCreateOptions; isComponentsV2: boolean } {
+  const isComponentsV2 = args.components !== undefined;
+  const flags: Array<"IsComponentsV2" | "SuppressNotifications"> = [
+    ...(isComponentsV2 ? ["IsComponentsV2" as const] : []),
+    ...(args.suppressNotifications ? ["SuppressNotifications" as const] : []),
+  ];
+  const payload: MessageCreateOptions = {
+    ...(isComponentsV2
+      ? { components: args.components!.map(buildComponent) }
+      : { content: args.message ?? args.content }),
+    ...(args.allowedMentions !== undefined
+      ? { allowedMentions: toAllowedMentions(args.allowedMentions) }
+      : {}),
+    ...(flags.length > 0 ? { flags } : {}),
+  };
+
+  return { payload, isComponentsV2 };
+}
+
 async function getMessageManager(client: ToolContext["client"], channelId: string) {
   const channel = await client.channels.fetch(channelId);
   if (!channel || !channel.isTextBased() || !("messages" in channel)) {
@@ -202,20 +227,7 @@ export const sendMessageHandler: ToolHandler = async (rawArgs, { client }) => {
       throw new Error(`Cannot find sendable text channel ID: ${args.channelId}`);
     }
 
-    const isComponentsV2 = args.components !== undefined;
-    const flags: Array<"IsComponentsV2" | "SuppressNotifications"> = [
-      ...(isComponentsV2 ? ["IsComponentsV2" as const] : []),
-      ...(args.suppressNotifications ? ["SuppressNotifications" as const] : []),
-    ];
-    const payload: MessageCreateOptions = {
-      ...(isComponentsV2
-        ? { components: args.components!.map(buildComponent) }
-        : { content: args.message ?? args.content }),
-      ...(args.allowedMentions !== undefined
-        ? { allowedMentions: toAllowedMentions(args.allowedMentions) }
-        : {}),
-      ...(flags.length > 0 ? { flags } : {}),
-    };
+    const { payload, isComponentsV2 } = buildMessageCreatePayload(args);
 
     const sent = await channel.send(payload);
     return textAndStructured("Message sent successfully.", {

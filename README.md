@@ -19,7 +19,7 @@ MCP-Discord provides the following Discord-related functionalities:
 - Inspect the bot's effective guild/channel permissions
 - Retrieve forum channel lists
 - Create/delete/reply to forum posts
-- Create/delete text channels
+- Create, move, edit, and delete text channels with category placement and permission overwrites
 - Add/remove message reactions
 - Create/edit/delete/use webhooks
 - **Member Management**: Kick, ban, unban, timeout, softban members
@@ -30,11 +30,12 @@ MCP-Discord provides the following Discord-related functionalities:
 - **Member Information**: Get detailed member data, list server members, send DMs
 - **Invite Management**: Create invites, list server/channel invites, get vanity URLs
 - **Emoji Management**: Create, delete, and list custom emojis
-- **Category Management**: Create, edit, and delete channel categories
+- **Category Management**: Create, edit, secure, reposition, cut over, and delete channel categories
 
 ## Table of Contents
 
 - [Compatibility](#compatibility)
+- [Release and Versioning](#release-and-versioning)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
@@ -64,6 +65,18 @@ MCP-Discord provides the following Discord-related functionalities:
 - Discord API v10 through `discord.js` 14.27
 - Model Context Protocol through `@modelcontextprotocol/sdk` 1.29, including the stable 2025-11-25 protocol revision
 - Stateless Streamable HTTP and stdio transports share the same handler registry
+
+## Release and Versioning
+
+The current enhanced-fork release is **2.1.0**. Git tags, the MCP server
+version, and immutable Docker image tags use the same version.
+
+- Release history: [CHANGELOG.md](CHANGELOG.md)
+- Version selection and release process: [VERSIONING.md](VERSIONING.md)
+
+Use the immutable `skuldgerry/discord-mcp:2.1.0` tag for deployments. Floating
+major/minor tags and `latest` are conveniences published only from a validated
+stable Git tag.
 
 ## Prerequisites
 
@@ -134,20 +147,20 @@ This enhanced fork is not published under the `mcp-discord` package name. Runnin
 
 ### Installing via Docker
 
-The public Docker image is available as `skuldgerry/discord-mcp:2.0.0`. You can pull it or build the same tag locally:
+The public Docker image is available as `skuldgerry/discord-mcp:2.1.0`. You can pull it or build the same tag locally:
 
 ```bash
 # Pull the published image
-docker pull skuldgerry/discord-mcp:2.0.0
+docker pull skuldgerry/discord-mcp:2.1.0
 
 # Or build it locally
-docker build -t skuldgerry/discord-mcp:2.0.0 .
+docker build -t skuldgerry/discord-mcp:2.1.0 .
 
 # Run locally with the Discord token supplied only at runtime
 docker run --rm --name mcp-discord \
   -e DISCORD_TOKEN=your_discord_bot_token \
   -p 127.0.0.1:8080:8080 \
-  skuldgerry/discord-mcp:2.0.0
+  skuldgerry/discord-mcp:2.1.0
 ```
 
 **Features:**
@@ -226,7 +239,7 @@ This configuration works with command-based clients and passes the token from th
                 "--no-healthcheck",
                 "-e",
                 "DISCORD_TOKEN",
-                "skuldgerry/discord-mcp:2.0.0",
+                "skuldgerry/discord-mcp:2.1.0",
                 "--transport",
                 "stdio"
             ],
@@ -302,7 +315,9 @@ Configure URL-capable MCP clients to use `http://127.0.0.1:8080/mcp`. The exact 
 
 ### Channel Management
 
-- `discord_create_text_channel`: Create a text channel
+- `discord_create_text_channel`: Create a text channel with parent/category, position, and permission overwrites
+- `discord_edit_channel`: Rename, move, reposition, or replace permission overwrites on a guild channel
+- `discord_set_channel_permission_overwrites`: Replace all permission overwrites after channel creation
 - `discord_delete_channel`: Delete a channel
 
 ### Forum Functions
@@ -373,7 +388,7 @@ Configure URL-capable MCP clients to use `http://127.0.0.1:8080/mcp`. The exact 
 
 - `discord_get_member_info`: Get detailed information about a specific member
 - `discord_list_members`: List members in a server with optional filtering
-- `discord_dm_member`: Send a direct message to a user
+- `discord_dm_member`: Send text or typed Components V2 DMs with allowed mention controls and silent delivery; returns channel/message IDs and URL
 
 ### Invite Management
 
@@ -391,8 +406,16 @@ Configure URL-capable MCP clients to use `http://127.0.0.1:8080/mcp`. The exact 
 ### Category Management
 
 - `discord_create_category`: Create a new channel category
-- `discord_edit_category`: Edit an existing category
+- `discord_edit_category`: Edit category name, position, or permission overwrites
+- `discord_cutover_categories`: Hide the old category, reposition both categories, then reveal the new category
 - `discord_delete_category`: Delete a category
+
+Permission overwrite inputs use `{ id, type, allow, deny }`, where `type` is
+`role` or `member` and permission values use Discord names such as
+`ViewChannel`. The guild ID is the `@everyone` role ID. This allows WIP
+categories to deny `ViewChannel` to `@everyone` while allowing it to an Admin
+role. The cutover operation requires the old-category overwrite set to deny
+`ViewChannel` to `@everyone`, so a partial failure cannot expose WIP content.
 
 ### Channel Extras
 
@@ -418,7 +441,7 @@ This enhanced version is based on the original [mcp-discord](https://github.com/
 ### Modifications
 
 This fork includes extensive enhancements added with AI assistance:
-- 68 advertised Discord tools for comprehensive server management
+- 71 advertised Discord tools for comprehensive server management
 - Enhanced moderation capabilities (kick, ban, timeout, softban, bulk operations)
 - Complete role management system (create, edit, delete, assign, remove)
 - Voice channel operations (disconnect, move, mute, deafen)
