@@ -108,7 +108,9 @@ export const SendMessageSchema = z.object({
     content: z.string().min(1).max(2000).optional(),
     components: z.array(MessageComponentSchema).min(1).max(40).optional(),
     allowedMentions: AllowedMentionsSchema.optional(),
-    suppressNotifications: z.boolean().optional()
+    suppressNotifications: z.boolean().optional(),
+    replyToMessageId: DiscordIdSchema.optional(),
+    failIfNotExists: z.boolean().optional()
 }).superRefine((value, context) => {
     const modes = [
         value.message !== undefined,
@@ -119,6 +121,13 @@ export const SendMessageSchema = z.object({
         context.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Provide exactly one of message, content, or components"
+        });
+    }
+    if (value.failIfNotExists !== undefined && value.replyToMessageId === undefined) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["failIfNotExists"],
+            message: "failIfNotExists requires replyToMessageId"
         });
     }
 });
@@ -198,6 +207,59 @@ export const ReplyToForumSchema = z.object({
     threadId: z.string(),
     message: z.string()
 });
+const ThreadAutoArchiveDurationSchema = z.union([
+    z.literal(60),
+    z.literal(1440),
+    z.literal(4320),
+    z.literal(10080)
+]);
+export const CreateThreadSchema = z.object({
+    channelId: DiscordIdSchema,
+    name: z.string().min(1).max(100),
+    startMessageId: DiscordIdSchema.optional(),
+    type: z.enum(["public", "private"]).optional(),
+    autoArchiveDuration: ThreadAutoArchiveDurationSchema.optional(),
+    rateLimitPerUserSeconds: z.number().int().min(0).max(21600).optional(),
+    invitable: z.boolean().optional(),
+    reason: z.string().optional()
+}).superRefine((value, context) => {
+    if (value.startMessageId !== undefined && value.type === "private") {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["type"],
+            message: "A thread started from a message cannot be private"
+        });
+    }
+    if (value.invitable !== undefined && value.type !== "private") {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["invitable"],
+            message: "invitable is only valid for private threads"
+        });
+    }
+});
+export const EditThreadSchema = z.object({
+    threadId: DiscordIdSchema,
+    name: z.string().min(1).max(100).optional(),
+    archived: z.boolean().optional(),
+    locked: z.boolean().optional(),
+    autoArchiveDuration: ThreadAutoArchiveDurationSchema.optional(),
+    rateLimitPerUserSeconds: z.number().int().min(0).max(21600).optional(),
+    invitable: z.boolean().optional(),
+    reason: z.string().optional()
+}).superRefine((value, context) => {
+    if (value.name === undefined &&
+        value.archived === undefined &&
+        value.locked === undefined &&
+        value.autoArchiveDuration === undefined &&
+        value.rateLimitPerUserSeconds === undefined &&
+        value.invitable === undefined) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Provide at least one thread field to edit"
+        });
+    }
+});
 export const CreateTextChannelSchema = z.object({
     guildId: DiscordIdSchema,
     channelName: z.string().min(1).max(100),
@@ -205,6 +267,19 @@ export const CreateTextChannelSchema = z.object({
     parentId: DiscordIdSchema.nullable().optional(),
     categoryId: DiscordIdSchema.nullable().optional(),
     position: z.number().int().min(0).optional(),
+    permissionOverwrites: PermissionOverwritesSchema.optional(),
+    reason: z.string().optional()
+}).superRefine(validateParentAliases);
+export const CreateVoiceChannelSchema = z.object({
+    guildId: DiscordIdSchema,
+    channelName: z.string().min(1).max(100),
+    parentId: DiscordIdSchema.nullable().optional(),
+    categoryId: DiscordIdSchema.nullable().optional(),
+    position: z.number().int().min(0).optional(),
+    bitrate: z.number().int().min(8000).max(384000).optional(),
+    userLimit: z.number().int().min(0).max(99).optional(),
+    rtcRegion: z.string().min(1).nullable().optional(),
+    videoQualityMode: z.enum(["auto", "full"]).optional(),
     permissionOverwrites: PermissionOverwritesSchema.optional(),
     reason: z.string().optional()
 }).superRefine(validateParentAliases);
@@ -229,22 +304,55 @@ export const EditChannelSchema = z.object({
     topic: z.string().max(1024).nullable().optional(),
     parentId: DiscordIdSchema.nullable().optional(),
     categoryId: DiscordIdSchema.nullable().optional(),
+    lockPermissions: z.boolean().optional(),
     position: z.number().int().min(0).optional(),
+    nsfw: z.boolean().optional(),
+    rateLimitPerUserSeconds: z.number().int().min(0).max(21600).optional(),
+    bitrate: z.number().int().min(8000).max(384000).optional(),
+    userLimit: z.number().int().min(0).max(99).optional(),
+    rtcRegion: z.string().min(1).nullable().optional(),
+    videoQualityMode: z.enum(["auto", "full"]).optional(),
+    defaultAutoArchiveDuration: ThreadAutoArchiveDurationSchema.optional(),
     permissionOverwrites: PermissionOverwritesSchema.optional(),
     reason: z.string().optional()
 }).superRefine((value, context) => {
     validateParentAliases(value, context);
+    const parentSpecified = value.parentId !== undefined || value.categoryId !== undefined;
+    if (value.lockPermissions !== undefined && !parentSpecified) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["lockPermissions"],
+            message: "lockPermissions requires parentId or categoryId"
+        });
+    }
+    if (value.lockPermissions === true && value.permissionOverwrites !== undefined) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["permissionOverwrites"],
+            message: "permissionOverwrites cannot be combined with lockPermissions=true"
+        });
+    }
     if (value.name === undefined &&
         value.topic === undefined &&
         value.parentId === undefined &&
         value.categoryId === undefined &&
         value.position === undefined &&
+        value.nsfw === undefined &&
+        value.rateLimitPerUserSeconds === undefined &&
+        value.bitrate === undefined &&
+        value.userLimit === undefined &&
+        value.rtcRegion === undefined &&
+        value.videoQualityMode === undefined &&
+        value.defaultAutoArchiveDuration === undefined &&
         value.permissionOverwrites === undefined) {
         context.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Provide at least one channel field to edit"
         });
     }
+});
+export const GetChannelInfoSchema = z.object({
+    channelId: DiscordIdSchema
 });
 export const SetChannelPermissionOverwritesSchema = z.object({
     channelId: DiscordIdSchema,
@@ -272,8 +380,20 @@ export const DeleteChannelSchema = z.object({
     reason: z.string().optional()
 });
 export const ReadMessagesSchema = z.object({
-    channelId: z.string(),
-    limit: z.number().min(1).max(100).optional().default(50)
+    channelId: DiscordIdSchema,
+    limit: z.number().int().min(1).max(100).optional().default(50),
+    before: DiscordIdSchema.optional(),
+    after: DiscordIdSchema.optional(),
+    around: DiscordIdSchema.optional()
+}).superRefine((value, context) => {
+    const cursorCount = [value.before, value.after, value.around]
+        .filter(cursor => cursor !== undefined).length;
+    if (cursorCount > 1) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Provide at most one of before, after, or around"
+        });
+    }
 });
 export const GetServerInfoSchema = z.object({
     guildId: z.string()
@@ -513,7 +633,9 @@ export const DMMemberSchema = z.object({
     content: z.string().min(1).max(2000).optional(),
     components: z.array(MessageComponentSchema).min(1).max(40).optional(),
     allowedMentions: AllowedMentionsSchema.optional(),
-    suppressNotifications: z.boolean().optional()
+    suppressNotifications: z.boolean().optional(),
+    replyToMessageId: DiscordIdSchema.optional(),
+    failIfNotExists: z.boolean().optional()
 }).superRefine((value, context) => {
     const modes = [
         value.message !== undefined,
@@ -524,6 +646,13 @@ export const DMMemberSchema = z.object({
         context.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Provide exactly one of message, content, or components"
+        });
+    }
+    if (value.failIfNotExists !== undefined && value.replyToMessageId === undefined) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["failIfNotExists"],
+            message: "failIfNotExists requires replyToMessageId"
         });
     }
 });

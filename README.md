@@ -68,8 +68,9 @@ MCP-Discord provides the following Discord-related functionalities:
 
 ## Release and Versioning
 
-The current enhanced-fork release is **2.1.0**. Git tags, the MCP server
-version, and immutable Docker image tags use the same version.
+The source tree is prepared for the unreleased **2.2.0** version. The latest
+published enhanced-fork release and immutable Docker image remain **2.1.0**
+until the 2.2.0 release commit, tag, and image are explicitly published.
 
 - Release history: [CHANGELOG.md](CHANGELOG.md)
 - Version selection and release process: [VERSIONING.md](VERSIONING.md)
@@ -307,7 +308,7 @@ Configure URL-capable MCP clients to use `http://127.0.0.1:8080/mcp`. The exact 
 
 - `discord_login`: Login to Discord using the configured token
 - `discord_list_servers`: List all Discord servers the bot is a member of
-- `discord_send`: Send legacy text or typed Components V2 (Text Display, Media Gallery, Container, Separator, Section/Thumbnail, and link buttons), with allowed mention controls and silent delivery
+- `discord_send`: Send legacy text or typed Components V2 (Text Display, Media Gallery, Container, Separator, Section/Thumbnail, and link buttons), including native replies, allowed mention controls, and silent delivery
 - `discord_edit_message`: Edit text or Components V2 messages authored by the bot
 - `discord_get_message`: Read one message including flags, components, attachments, embeds, and poll state
 - `discord_get_bot_permissions`: Inspect effective bot permissions and common capabilities
@@ -316,7 +317,9 @@ Configure URL-capable MCP clients to use `http://127.0.0.1:8080/mcp`. The exact 
 ### Channel Management
 
 - `discord_create_text_channel`: Create a text channel with parent/category, position, and permission overwrites
-- `discord_edit_channel`: Rename, move, reposition, or replace permission overwrites on a guild channel
+- `discord_create_voice_channel`: Create a voice channel with hierarchy, bitrate, capacity, region, video quality, and permission overwrites
+- `discord_edit_channel`: Rename, move, reposition, configure text/voice settings, replace permission overwrites, or move with Discord's native permission synchronization
+- `discord_get_channel_info`: Inspect hierarchy, type-specific settings, normalized permission overwrites, and parent permission-sync state
 - `discord_set_channel_permission_overwrites`: Replace all permission overwrites after channel creation
 - `discord_delete_channel`: Delete a channel
 
@@ -328,9 +331,14 @@ Configure URL-capable MCP clients to use `http://127.0.0.1:8080/mcp`. The exact 
 - `discord_reply_to_forum`: Reply to a forum post
 - `discord_delete_forum_post`: Delete a forum post
 
+### Thread Management
+
+- `discord_create_thread`: Create public/private threads, optionally from an existing message
+- `discord_edit_thread`: Rename, archive, lock, configure auto-archive/slowmode, or change private-thread invite behavior
+
 ### Messages and Reactions
 
-- `discord_read_messages`: Read channel messages, including Components V2, flags, attachments, embeds, and polls
+- `discord_read_messages`: Read channel messages with `before`, `after`, or `around` pagination, including Components V2, flags, attachments, embeds, and polls
 - `discord_forward_message`: Forward a message using Discord's native message snapshot
 - `discord_crosspost_message`: Publish a message from an Announcement channel
 - `discord_send_poll`: Send a native Discord poll
@@ -388,7 +396,7 @@ Configure URL-capable MCP clients to use `http://127.0.0.1:8080/mcp`. The exact 
 
 - `discord_get_member_info`: Get detailed information about a specific member
 - `discord_list_members`: List members in a server with optional filtering
-- `discord_dm_member`: Send text or typed Components V2 DMs with allowed mention controls and silent delivery; returns channel/message IDs and URL
+- `discord_dm_member`: Send text or typed Components V2 DMs, including native replies, allowed mention controls, and silent delivery; returns channel/message IDs and URL
 
 ### Invite Management
 
@@ -441,10 +449,11 @@ This enhanced version is based on the original [mcp-discord](https://github.com/
 ### Modifications
 
 This fork includes extensive enhancements added with AI assistance:
-- 71 advertised Discord tools for comprehensive server management
+- 75 advertised Discord tools for comprehensive server management
 - Enhanced moderation capabilities (kick, ban, timeout, softban, bulk operations)
 - Complete role management system (create, edit, delete, assign, remove)
-- Voice channel operations (disconnect, move, mute, deafen)
+- Voice channel creation/configuration and member operations (disconnect, move, mute, deafen)
+- Public/private thread creation and lifecycle management
 - Advanced channel management (slowmode, lock/unlock, pin/unpin)
 - Member information and management tools
 - Invite and emoji management

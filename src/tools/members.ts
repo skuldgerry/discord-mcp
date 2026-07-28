@@ -56,7 +56,8 @@ export async function dmMemberHandler(args: unknown, context: ToolContext): Prom
       messageId: sent.id,
       url: sent.url,
       componentsV2: isComponentsV2,
-      suppressedNotifications: parsed.suppressNotifications ?? false
+      suppressedNotifications: parsed.suppressNotifications ?? false,
+      replyToMessageId: parsed.replyToMessageId ?? null
     });
   } catch (error) {
     return handleDiscordError(error);

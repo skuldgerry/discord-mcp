@@ -36,8 +36,9 @@ Increment `MINOR` for backward-compatible capabilities, including:
 - adding a transport or configuration option without changing existing
   behavior.
 
-Version 2.1.0 is a minor release because it adds tools and optional capabilities
-while preserving existing tool names and valid inputs.
+Versions 2.1.0 and the planned 2.2.0 are minor releases because they add tools
+and optional capabilities while preserving existing tool names and valid
+inputs.
 
 ### PATCH
 
@@ -61,6 +62,12 @@ Pre-release images must use the exact pre-release tag and must not update
 `latest`.
 
 ## Release process
+
+During development, `package.json`, `package-lock.json`, and the local MCP
+server may carry the selected next version before a release exists. The README
+must identify that version as unreleased and continue to name the last
+published immutable Docker tag. The Git tag, dated changelog entry, and Docker
+tag are created together only during the authorized release.
 
 1. Review changes since the last `vMAJOR.MINOR.PATCH` tag and select the version
    using the rules above.

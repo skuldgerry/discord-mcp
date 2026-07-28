@@ -111,6 +111,14 @@ export function buildMessageCreatePayload(args) {
         ...(args.allowedMentions !== undefined
             ? { allowedMentions: toAllowedMentions(args.allowedMentions) }
             : {}),
+        ...(args.replyToMessageId !== undefined
+            ? {
+                reply: {
+                    messageReference: args.replyToMessageId,
+                    failIfNotExists: args.failIfNotExists ?? true,
+                },
+            }
+            : {}),
         ...(flags.length > 0 ? { flags } : {}),
     };
     return { payload, isComponentsV2 };
@@ -178,6 +186,7 @@ export const sendMessageHandler = async (rawArgs, { client }) => {
             url: sent.url,
             componentsV2: isComponentsV2,
             suppressedNotifications: args.suppressNotifications ?? false,
+            replyToMessageId: args.replyToMessageId ?? null,
         });
     }
     catch (caught) {

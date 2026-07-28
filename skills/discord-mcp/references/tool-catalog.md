@@ -15,7 +15,7 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 | `discord_pin_message` | Pin a message in a channel | `channelId`*, `messageId`* |
 | `discord_unpin_message` | Unpin a message in a channel | `channelId`*, `messageId`* |
 | `discord_softban_member` | Ban then immediately unban to purge messages | `guildId`*, `userId`*, `deleteMessageDays`, `reason` |
-| `discord_dm_member` | Sends a DM using the same text or typed Components V2 model as discord_send, including Media Gallery, mention controls, and silent delivery. | `userId`*, `message`, `content`, `components`, `allowedMentions`, `suppressNotifications` |
+| `discord_dm_member` | Sends a DM using the same text or typed Components V2 model as discord_send, including Media Gallery, mention controls, and silent delivery. | `userId`*, `message`, `content`, `components`, `allowedMentions`, `suppressNotifications`, `replyToMessageId`, `failIfNotExists` |
 | `discord_get_channel_invites` | List invites for a specific channel | `channelId`* |
 | `discord_get_vanity_url` | Get server vanity URL if available | `guildId`* |
 | `discord_disconnect_voice` | Disconnects a member from their current voice channel | `guildId`*, `userId`*, `reason` |
@@ -34,7 +34,7 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 | `discord_edit_category` | Edits an existing Discord category, including position and complete permission overwrites. | `categoryId`*, `name`, `position`, `permissionOverwrites`, `reason` |
 | `discord_delete_category` | Deletes a Discord category by ID. | `categoryId`*, `reason` |
 | `discord_login` | Logs in to Discord using the configured token | `token` |
-| `discord_send` | Sends a Discord message. Supports legacy text, typed Components V2, empty allowed_mentions, and suppressed notifications. | `channelId`*, `message`, `content`, `components`, `allowedMentions`, `suppressNotifications` |
+| `discord_send` | Sends a Discord message. Supports legacy text, typed Components V2, replies, empty allowed_mentions, and suppressed notifications. | `channelId`*, `message`, `content`, `components`, `allowedMentions`, `suppressNotifications`, `replyToMessageId`, `failIfNotExists` |
 | `discord_edit_message` | Edits a message authored by this bot, using text or the same typed Components V2 model as discord_send. | `channelId`*, `messageId`*, `message`, `content`, `components`, `allowedMentions` |
 | `discord_get_message` | Gets one Discord message with flags, Components V2, attachments, embeds, poll data, and bot editability. | `channelId`*, `messageId`* |
 | `discord_get_bot_permissions` | Gets the bot's effective guild or channel permissions and common Discord capabilities. | `guildId`*, `channelId` |
@@ -47,12 +47,16 @@ Generated from `build/toolList.js` by `scripts/generate-tool-catalog.mjs`. Requi
 | `discord_create_forum_post` | Creates a new post in a Discord forum channel with optional tags | `forumChannelId`*, `title`*, `content`*, `tags` |
 | `discord_get_forum_post` | Retrieves details about a forum post including its messages | `threadId`* |
 | `discord_reply_to_forum` | Adds a reply to an existing forum post or thread | `threadId`*, `message`* |
+| `discord_create_thread` | Creates a public or private thread in a guild text or announcement channel, optionally from an existing message. | `channelId`*, `name`*, `startMessageId`, `type`, `autoArchiveDuration`, `rateLimitPerUserSeconds`, `invitable`, `reason` |
+| `discord_edit_thread` | Edits thread lifecycle and settings, including archive, lock, auto-archive duration, slowmode, and private-thread invites. | `threadId`*, `name`, `archived`, `locked`, `autoArchiveDuration`, `rateLimitPerUserSeconds`, `invitable`, `reason` |
 | `discord_create_text_channel` | Creates a text channel with optional parent/category, position, and permission overwrites. | `guildId`*, `channelName`*, `topic`, `parentId`, `categoryId`, `position`, `permissionOverwrites`, `reason` |
-| `discord_edit_channel` | Edits or moves a guild channel, including parent/category, position, topic, and complete permission overwrites. | `channelId`*, `name`, `topic`, `parentId`, `categoryId`, `position`, `permissionOverwrites`, `reason` |
+| `discord_create_voice_channel` | Creates a voice channel with hierarchy, capacity, region, quality, and permission-overwrite controls. | `guildId`*, `channelName`*, `parentId`, `categoryId`, `position`, `bitrate`, `userLimit`, `rtcRegion`, `videoQualityMode`, `permissionOverwrites`, `reason` |
+| `discord_edit_channel` | Edits or moves a guild channel, including hierarchy, native permission locking, text, voice, thread defaults, and complete permission overwrites. | `channelId`*, `name`, `topic`, `parentId`, `categoryId`, `lockPermissions`, `position`, `nsfw`, `rateLimitPerUserSeconds`, `bitrate`, `userLimit`, `rtcRegion`, `videoQualityMode`, `defaultAutoArchiveDuration`, `permissionOverwrites`, `reason` |
+| `discord_get_channel_info` | Returns normalized hierarchy, type-specific settings, and permission-overwrite details for a non-thread guild channel. | `channelId`* |
 | `discord_set_channel_permission_overwrites` | Replaces all permission overwrites on a guild channel or category. | `channelId`*, `permissionOverwrites`*, `reason` |
 | `discord_cutover_categories` | Performs a privacy-safe category cutover: hide the old category, reposition both, then reveal the new category. | `oldCategoryId`*, `newCategoryId`*, `oldPosition`*, `newPosition`*, `oldPermissionOverwrites`*, `newPermissionOverwrites`*, `reason` |
 | `discord_delete_channel` | Deletes a Discord channel with an optional reason | `channelId`*, `reason` |
-| `discord_read_messages` | Retrieves messages from a Discord text channel with a configurable limit | `channelId`*, `limit` |
+| `discord_read_messages` | Retrieves messages from a Discord text channel with a configurable limit and one optional pagination cursor. | `channelId`*, `limit`, `before`, `after`, `around` |
 | `discord_get_server_info` | Retrieves detailed information about a Discord server including channels and member count | `guildId`* |
 | `discord_add_reaction` | Adds an emoji reaction to a specific Discord message | `channelId`*, `messageId`*, `emoji`* |
 | `discord_add_multiple_reactions` | Adds multiple emoji reactions to a Discord message at once | `channelId`*, `messageId`*, `emojis`* |
