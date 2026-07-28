@@ -591,7 +591,45 @@ export const toolList = [
         description: "Gets the bot's effective guild or channel permissions and common Discord capabilities.",
         inputSchema: {
             type: "object",
-            additionalProperties…306 tokens truncated…  name: "discord_send_poll",
+            additionalProperties: false,
+            properties: {
+                guildId: discordIdSchema,
+                channelId: discordIdSchema
+            },
+            required: ["guildId"]
+        }
+    },
+    {
+        name: "discord_forward_message",
+        description: "Forwards an existing Discord message to another channel using the native message snapshot.",
+        inputSchema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+                sourceChannelId: discordIdSchema,
+                messageId: discordIdSchema,
+                targetChannelId: discordIdSchema
+            },
+            required: ["sourceChannelId", "messageId", "targetChannelId"]
+        },
+        outputSchema: messageResultSchema
+    },
+    {
+        name: "discord_crosspost_message",
+        description: "Publishes a message from an Announcement channel.",
+        inputSchema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+                channelId: discordIdSchema,
+                messageId: discordIdSchema
+            },
+            required: ["channelId", "messageId"]
+        },
+        outputSchema: messageResultSchema
+    },
+    {
+        name: "discord_send_poll",
         description: "Sends a native Discord poll with typed answers, duration, mention controls, and optional silent delivery.",
         inputSchema: {
             type: "object",
