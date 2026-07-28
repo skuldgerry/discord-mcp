@@ -36,7 +36,13 @@ type MessageComponentInput = z.infer<typeof MessageComponentSchema>;
 type LinkButtonInput = Extract<MessageComponentInput, { type: "link_buttons" }>["buttons"][number];
 type MessagePayloadInput = Pick<
   z.infer<typeof SendMessageSchema>,
-  "message" | "content" | "components" | "allowedMentions" | "suppressNotifications"
+  | "message"
+  | "content"
+  | "components"
+  | "allowedMentions"
+  | "suppressNotifications"
+  | "replyToMessageId"
+  | "failIfNotExists"
 >;
 
 export function textAndStructured(summary: string, data: Record<string, unknown>): ToolResponse {
@@ -163,6 +169,14 @@ export function buildMessageCreatePayload(
     ...(args.allowedMentions !== undefined
       ? { allowedMentions: toAllowedMentions(args.allowedMentions) }
       : {}),
+    ...(args.replyToMessageId !== undefined
+      ? {
+          reply: {
+            messageReference: args.replyToMessageId,
+            failIfNotExists: args.failIfNotExists ?? true,
+          },
+        }
+      : {}),
     ...(flags.length > 0 ? { flags } : {}),
   };
 
@@ -236,6 +250,7 @@ export const sendMessageHandler: ToolHandler = async (rawArgs, { client }) => {
       url: sent.url,
       componentsV2: isComponentsV2,
       suppressedNotifications: args.suppressNotifications ?? false,
+      replyToMessageId: args.replyToMessageId ?? null,
     });
   } catch (caught) {
     return handleDiscordError(caught);

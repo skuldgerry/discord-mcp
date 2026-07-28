@@ -56,6 +56,7 @@ test("discord_dm_member sends typed Media Gallery silently with empty mentions",
     url: `https://discord.com/channels/@me/${dmChannelId}/${messageId}`,
     componentsV2: true,
     suppressedNotifications: true,
+    replyToMessageId: null,
   });
 });
 
@@ -109,6 +110,10 @@ test("new tools and existing discord_send are all advertised with useful outputs
     "discord_send",
     "discord_dm_member",
     "discord_edit_channel",
+    "discord_get_channel_info",
+    "discord_create_voice_channel",
+    "discord_create_thread",
+    "discord_edit_thread",
     "discord_set_channel_permission_overwrites",
     "discord_cutover_categories",
   ]) {

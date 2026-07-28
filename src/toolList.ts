@@ -177,7 +177,8 @@ const messageResultSchema = {
   properties: {
     channelId: { type: "string" },
     messageId: { type: "string" },
-    url: { type: "string" }
+    url: { type: "string" },
+    replyToMessageId: { type: ["string", "null"] }
   },
   required: ["channelId", "messageId", "url"]
 };
@@ -218,9 +219,87 @@ const channelResultSchema = {
     channelId: { type: "string" },
     categoryId: { type: ["string", "null"] },
     parentId: { type: ["string", "null"] },
-    position: { type: ["number", "null"] }
+    position: { type: ["number", "null"] },
+    lockPermissionsRequested: { type: ["boolean", "null"] },
+    lockPermissionsApplied: { type: ["boolean", "null"] },
+    permissionsSynced: { type: ["boolean", "null"] },
+    nsfw: { type: ["boolean", "null"] },
+    rateLimitPerUserSeconds: { type: ["number", "null"] },
+    bitrate: { type: ["number", "null"] },
+    userLimit: { type: ["number", "null"] },
+    rtcRegion: { type: ["string", "null"] },
+    videoQualityMode: { type: ["number", "null"] },
+    defaultAutoArchiveDuration: { type: ["number", "null"] }
   },
   required: ["guildId", "channelId"]
+};
+
+const channelInfoResultSchema = {
+  type: "object",
+  properties: {
+    guildId: { type: "string" },
+    channelId: { type: "string" },
+    name: { type: "string" },
+    type: { type: "string" },
+    categoryId: { type: ["string", "null"] },
+    parentId: { type: ["string", "null"] },
+    position: { type: ["number", "null"] },
+    topic: { type: ["string", "null"] },
+    nsfw: { type: ["boolean", "null"] },
+    rateLimitPerUserSeconds: { type: ["number", "null"] },
+    bitrate: { type: ["number", "null"] },
+    userLimit: { type: ["number", "null"] },
+    rtcRegion: { type: ["string", "null"] },
+    videoQualityMode: { type: ["number", "null"] },
+    defaultAutoArchiveDuration: { type: ["number", "null"] },
+    permissionOverwrites: permissionOverwritesSchema,
+    permissionsSynced: { type: ["boolean", "null"] }
+  },
+  required: [
+    "guildId",
+    "channelId",
+    "name",
+    "type",
+    "categoryId",
+    "parentId",
+    "position",
+    "topic",
+    "permissionOverwrites",
+    "permissionsSynced"
+  ]
+};
+
+const threadResultSchema = {
+  type: "object",
+  properties: {
+    guildId: { type: ["string", "null"] },
+    channelId: { type: "string" },
+    threadId: { type: "string" },
+    parentChannelId: { type: ["string", "null"] },
+    name: { type: "string" },
+    type: { type: "string" },
+    ownerId: { type: ["string", "null"] },
+    archived: { type: "boolean" },
+    locked: { type: "boolean" },
+    invitable: { type: ["boolean", "null"] },
+    autoArchiveDuration: { type: ["number", "null"] },
+    rateLimitPerUserSeconds: { type: ["number", "null"] },
+    messageCount: { type: ["number", "null"] },
+    memberCount: { type: ["number", "null"] },
+    createdAt: { type: ["string", "null"] },
+    archiveTimestamp: { type: ["string", "null"] },
+    url: { type: ["string", "null"] }
+  },
+  required: [
+    "guildId",
+    "channelId",
+    "threadId",
+    "parentChannelId",
+    "name",
+    "type",
+    "archived",
+    "locked"
+  ]
 };
 
 export const toolList = [
@@ -340,6 +419,14 @@ export const toolList = [
         suppressNotifications: {
           type: "boolean",
           description: "Adds Discord's SUPPRESS_NOTIFICATIONS message flag."
+        },
+        replyToMessageId: {
+          ...discordIdSchema,
+          description: "Message ID in the resolved DM channel to reply to."
+        },
+        failIfNotExists: {
+          type: "boolean",
+          description: "Whether the reply should fail when the referenced message no longer exists. Requires replyToMessageId."
         }
       },
       required: ["userId"],
@@ -533,7 +620,7 @@ export const toolList = [
   },
   {
     name: "discord_send",
-    description: "Sends a Discord message. Supports legacy text, typed Components V2, empty allowed_mentions, and suppressed notifications.",
+    description: "Sends a Discord message. Supports legacy text, typed Components V2, replies, empty allowed_mentions, and suppressed notifications.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -551,6 +638,14 @@ export const toolList = [
         suppressNotifications: {
           type: "boolean",
           description: "Adds Discord's SUPPRESS_NOTIFICATIONS message flag."
+        },
+        replyToMessageId: {
+          ...discordIdSchema,
+          description: "Message ID in the target channel to reply to."
+        },
+        failIfNotExists: {
+          type: "boolean",
+          description: "Whether the reply should fail when the referenced message no longer exists. Requires replyToMessageId."
         }
       },
       required: ["channelId"],
@@ -759,6 +854,64 @@ export const toolList = [
     }
   },
   {
+    name: "discord_create_thread",
+    description: "Creates a public or private thread in a guild text or announcement channel, optionally from an existing message.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema,
+        name: { type: "string", minLength: 1, maxLength: 100 },
+        startMessageId: discordIdSchema,
+        type: { type: "string", enum: ["public", "private"] },
+        autoArchiveDuration: {
+          type: "integer",
+          enum: [60, 1440, 4320, 10080],
+          description: "Minutes until inactivity archives the thread."
+        },
+        rateLimitPerUserSeconds: {
+          type: "integer",
+          minimum: 0,
+          maximum: 21600
+        },
+        invitable: {
+          type: "boolean",
+          description: "Whether non-moderators can invite users; private threads only."
+        },
+        reason: { type: "string" }
+      },
+      required: ["channelId", "name"]
+    },
+    outputSchema: threadResultSchema
+  },
+  {
+    name: "discord_edit_thread",
+    description: "Edits thread lifecycle and settings, including archive, lock, auto-archive duration, slowmode, and private-thread invites.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        threadId: discordIdSchema,
+        name: { type: "string", minLength: 1, maxLength: 100 },
+        archived: { type: "boolean" },
+        locked: { type: "boolean" },
+        autoArchiveDuration: {
+          type: "integer",
+          enum: [60, 1440, 4320, 10080]
+        },
+        rateLimitPerUserSeconds: {
+          type: "integer",
+          minimum: 0,
+          maximum: 21600
+        },
+        invitable: { type: "boolean" },
+        reason: { type: "string" }
+      },
+      required: ["threadId"]
+    },
+    outputSchema: threadResultSchema
+  },
+  {
     name: "discord_create_text_channel",
     description: "Creates a text channel with optional parent/category, position, and permission overwrites.",
     inputSchema: {
@@ -785,8 +938,40 @@ export const toolList = [
     outputSchema: channelResultSchema
   },
   {
+    name: "discord_create_voice_channel",
+    description: "Creates a voice channel with hierarchy, capacity, region, quality, and permission-overwrite controls.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        guildId: discordIdSchema,
+        channelName: { type: "string", minLength: 1, maxLength: 100 },
+        parentId: {
+          oneOf: [discordIdSchema, { type: "null" }],
+          description: "Parent category ID; null creates at the guild root."
+        },
+        categoryId: {
+          oneOf: [discordIdSchema, { type: "null" }],
+          description: "Alias for parentId."
+        },
+        position: { type: "integer", minimum: 0 },
+        bitrate: { type: "integer", minimum: 8000, maximum: 384000 },
+        userLimit: { type: "integer", minimum: 0, maximum: 99 },
+        rtcRegion: {
+          type: ["string", "null"],
+          description: "Voice region override, or null for automatic selection."
+        },
+        videoQualityMode: { type: "string", enum: ["auto", "full"] },
+        permissionOverwrites: permissionOverwritesSchema,
+        reason: { type: "string" }
+      },
+      required: ["guildId", "channelName"]
+    },
+    outputSchema: channelResultSchema
+  },
+  {
     name: "discord_edit_channel",
-    description: "Edits or moves a guild channel, including parent/category, position, topic, and complete permission overwrites.",
+    description: "Edits or moves a guild channel, including hierarchy, native permission locking, text, voice, thread defaults, and complete permission overwrites.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -802,13 +987,44 @@ export const toolList = [
           oneOf: [discordIdSchema, { type: "null" }],
           description: "Alias for parentId."
         },
+        lockPermissions: {
+          type: "boolean",
+          description: "When moving, pass Discord's native lock_permissions option. true synchronizes overwrites with the new parent; false preserves the channel's overwrites."
+        },
         position: { type: "integer", minimum: 0 },
+        nsfw: { type: "boolean" },
+        rateLimitPerUserSeconds: {
+          type: "integer",
+          minimum: 0,
+          maximum: 21600
+        },
+        bitrate: { type: "integer", minimum: 8000, maximum: 384000 },
+        userLimit: { type: "integer", minimum: 0, maximum: 99 },
+        rtcRegion: { type: ["string", "null"] },
+        videoQualityMode: { type: "string", enum: ["auto", "full"] },
+        defaultAutoArchiveDuration: {
+          type: "integer",
+          enum: [60, 1440, 4320, 10080]
+        },
         permissionOverwrites: permissionOverwritesSchema,
         reason: { type: "string" }
       },
       required: ["channelId"]
     },
     outputSchema: channelResultSchema
+  },
+  {
+    name: "discord_get_channel_info",
+    description: "Returns normalized hierarchy, type-specific settings, and permission-overwrite details for a non-thread guild channel.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        channelId: discordIdSchema
+      },
+      required: ["channelId"]
+    },
+    outputSchema: channelInfoResultSchema
   },
   {
     name: "discord_set_channel_permission_overwrites",
@@ -864,16 +1080,28 @@ export const toolList = [
   },
   {
     name: "discord_read_messages",
-    description: "Retrieves messages from a Discord text channel with a configurable limit",
+    description: "Retrieves messages from a Discord text channel with a configurable limit and one optional pagination cursor.",
     inputSchema: {
       type: "object",
       properties: {
         channelId: { type: "string" },
         limit: {
-          type: "number",
+          type: "integer",
           minimum: 1,
           maximum: 100,
           default: 50
+        },
+        before: {
+          ...discordIdSchema,
+          description: "Return messages before this message ID."
+        },
+        after: {
+          ...discordIdSchema,
+          description: "Return messages after this message ID."
+        },
+        around: {
+          ...discordIdSchema,
+          description: "Return messages centered around this message ID."
         }
       },
       required: ["channelId"]

@@ -5,9 +5,34 @@ Releases follow the policy in [VERSIONING.md](VERSIONING.md).
 
 ## [Unreleased]
 
+Target version: **2.2.0**
+
 ### Added
 
+- Read-only `discord_get_channel_info` inspection with normalized permission
+  names, hierarchy details, and parent overwrite synchronization status.
+- Voice-channel creation with hierarchy, bitrate, user capacity, RTC region,
+  video quality, and typed permission overwrites.
+- Public/private thread creation and lifecycle editing, including archive,
+  lock, auto-archive, slowmode, and private-thread invitation controls.
+- Explicit regression coverage for locked, unlocked, and parent-only channel
+  moves, replies, message pagination, voice channels, thread lifecycle,
+  overwrite serialization, synchronization calculation, and transport parity.
+
 ### Changed
+
+- `discord_edit_channel` accepts optional `lockPermissions`. Explicit values
+  use Discord's native `lock_permissions` move semantics; `true` synchronizes
+  with the destination category and `false` preserves independent overwrites.
+- Channel edit responses report the requested and applied lock value and,
+  whenever it can be verified, whether permissions match the parent.
+- `discord_send` and `discord_dm_member` support native message replies with
+  configurable missing-reference behavior.
+- `discord_read_messages` supports mutually exclusive `before`, `after`, and
+  `around` pagination cursors.
+- Generic channel inspection/editing now covers type-specific text, voice, and
+  default thread settings.
+- Tool catalog increased from 71 to 75 tools.
 
 ### Fixed
 

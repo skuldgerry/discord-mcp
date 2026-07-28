@@ -1,7 +1,7 @@
 import { loginHandler } from './login.js';
 import { crosspostMessageHandler, editMessageHandler, endPollHandler, forwardMessageHandler, getBotPermissionsHandler, getMessageHandler, getPollVotersHandler, sendMessageHandler, sendPollHandler } from './send-message.js';
 import { getForumChannelsHandler, createForumPostHandler, getForumPostHandler, replyToForumHandler, deleteForumPostHandler } from './forum.js';
-import { createTextChannelHandler, editChannelHandler, setChannelPermissionOverwritesHandler, cutoverCategoriesHandler, deleteChannelHandler, readMessagesHandler, getServerInfoHandler, createCategoryHandler, editCategoryHandler, deleteCategoryHandler, listServersHandler, setSlowmodeHandler, lockChannelHandler, unlockChannelHandler } from './channel.js';
+import { createTextChannelHandler, createVoiceChannelHandler, createThreadHandler, editThreadHandler, editChannelHandler, getChannelInfoHandler, setChannelPermissionOverwritesHandler, cutoverCategoriesHandler, deleteChannelHandler, readMessagesHandler, getServerInfoHandler, createCategoryHandler, editCategoryHandler, deleteCategoryHandler, listServersHandler, setSlowmodeHandler, lockChannelHandler, unlockChannelHandler } from './channel.js';
 import { addReactionHandler, addMultipleReactionsHandler, removeReactionHandler, deleteMessageHandler } from './reactions.js';
 import { createWebhookHandler, sendWebhookMessageHandler, editWebhookHandler, deleteWebhookHandler } from './webhooks.js';
 import { kickMemberHandler, banMemberHandler, unbanMemberHandler, timeoutMemberHandler, disconnectMemberHandler, moveMemberHandler, removeTimeoutHandler, bulkDeleteMessagesHandler, setNicknameHandler, getBansHandler, softbanMemberHandler, pinMessageHandler, unpinMessageHandler } from './moderation.js';
@@ -32,7 +32,11 @@ export const toolHandlers = {
     discord_reply_to_forum: replyToForumHandler,
     discord_delete_forum_post: deleteForumPostHandler,
     discord_create_text_channel: createTextChannelHandler,
+    discord_create_voice_channel: createVoiceChannelHandler,
     discord_edit_channel: editChannelHandler,
+    discord_get_channel_info: getChannelInfoHandler,
+    discord_create_thread: createThreadHandler,
+    discord_edit_thread: editThreadHandler,
     discord_set_channel_permission_overwrites: setChannelPermissionOverwritesHandler,
     discord_cutover_categories: cutoverCategoriesHandler,
     discord_delete_channel: deleteChannelHandler,
@@ -89,7 +93,7 @@ export function getToolHandler(name) {
     return toolHandlers[name];
 }
 // Export tool handlers
-export { loginHandler, sendMessageHandler, editMessageHandler, getMessageHandler, getBotPermissionsHandler, forwardMessageHandler, crosspostMessageHandler, sendPollHandler, endPollHandler, getPollVotersHandler, getForumChannelsHandler, createForumPostHandler, getForumPostHandler, replyToForumHandler, deleteForumPostHandler, createTextChannelHandler, editChannelHandler, setChannelPermissionOverwritesHandler, cutoverCategoriesHandler, deleteChannelHandler, readMessagesHandler, getServerInfoHandler, addReactionHandler, addMultipleReactionsHandler, removeReactionHandler, deleteMessageHandler, createWebhookHandler, sendWebhookMessageHandler, editWebhookHandler, deleteWebhookHandler, createCategoryHandler, editCategoryHandler, deleteCategoryHandler, listServersHandler, kickMemberHandler, banMemberHandler, unbanMemberHandler, timeoutMemberHandler, disconnectMemberHandler, moveMemberHandler, removeTimeoutHandler, bulkDeleteMessagesHandler, setNicknameHandler, getBansHandler, softbanMemberHandler, pinMessageHandler, unpinMessageHandler, addRoleToMemberHandler, removeRoleFromMemberHandler, createRoleHandler, editRoleHandler, deleteRoleHandler, listRolesHandler, disconnectVoiceHandler, moveVoiceHandler, voiceMuteHandler, voiceDeafenHandler, getMemberInfoHandler, listMembersHandler, dmMemberHandler, createInviteHandler, getInvitesHandler, getChannelInvitesHandler, getVanityUrlHandler, getAuditLogsHandler, listEmojisHandler, createEmojiHandler, deleteEmojiHandler, setSlowmodeHandler, lockChannelHandler, unlockChannelHandler };
+export { loginHandler, sendMessageHandler, editMessageHandler, getMessageHandler, getBotPermissionsHandler, forwardMessageHandler, crosspostMessageHandler, sendPollHandler, endPollHandler, getPollVotersHandler, getForumChannelsHandler, createForumPostHandler, getForumPostHandler, replyToForumHandler, deleteForumPostHandler, createTextChannelHandler, createVoiceChannelHandler, editChannelHandler, getChannelInfoHandler, createThreadHandler, editThreadHandler, setChannelPermissionOverwritesHandler, cutoverCategoriesHandler, deleteChannelHandler, readMessagesHandler, getServerInfoHandler, addReactionHandler, addMultipleReactionsHandler, removeReactionHandler, deleteMessageHandler, createWebhookHandler, sendWebhookMessageHandler, editWebhookHandler, deleteWebhookHandler, createCategoryHandler, editCategoryHandler, deleteCategoryHandler, listServersHandler, kickMemberHandler, banMemberHandler, unbanMemberHandler, timeoutMemberHandler, disconnectMemberHandler, moveMemberHandler, removeTimeoutHandler, bulkDeleteMessagesHandler, setNicknameHandler, getBansHandler, softbanMemberHandler, pinMessageHandler, unpinMessageHandler, addRoleToMemberHandler, removeRoleFromMemberHandler, createRoleHandler, editRoleHandler, deleteRoleHandler, listRolesHandler, disconnectVoiceHandler, moveVoiceHandler, voiceMuteHandler, voiceDeafenHandler, getMemberInfoHandler, listMembersHandler, dmMemberHandler, createInviteHandler, getInvitesHandler, getChannelInvitesHandler, getVanityUrlHandler, getAuditLogsHandler, listEmojisHandler, createEmojiHandler, deleteEmojiHandler, setSlowmodeHandler, lockChannelHandler, unlockChannelHandler };
 // Create tool context
 export function createToolContext(client) {
     return { client };

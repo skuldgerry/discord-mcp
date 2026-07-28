@@ -1,14 +1,18 @@
 import { z } from "zod";
-import { ChannelType, PermissionsBitField } from "discord.js";
+import { ChannelType, PermissionsBitField, VideoQualityMode } from "discord.js";
 import { ToolContext, ToolResponse } from "./types.js";
 import { 
   CreateTextChannelSchema, 
+  CreateVoiceChannelSchema,
   DeleteChannelSchema, 
   ReadMessagesSchema,
   GetServerInfoSchema,
   CreateCategorySchema,
   EditCategorySchema,
   EditChannelSchema,
+  GetChannelInfoSchema,
+  CreateThreadSchema,
+  EditThreadSchema,
   SetChannelPermissionOverwritesSchema,
   CutoverCategoriesSchema,
   DeleteCategorySchema,
@@ -45,6 +49,70 @@ function structured(summary: string, data: Record<string, unknown>): ToolRespons
   return {
     content: [{ type: "text", text: `${summary}\n${JSON.stringify(data, null, 2)}` }],
     structuredContent: data
+  };
+}
+
+type SerializedPermissionOverwrite = {
+  id: string;
+  type: "role" | "member";
+  allow: string[];
+  deny: string[];
+};
+
+export function serializePermissionOverwrites(channel: any): SerializedPermissionOverwrite[] {
+  const cache = channel?.permissionOverwrites?.cache;
+  if (!cache || typeof cache.values !== "function") return [];
+
+  return Array.from(cache.values() as Iterable<any>)
+    .map(overwrite => ({
+      id: String(overwrite.id),
+      type: overwrite.type === 0 || overwrite.type === "role" ? "role" as const : "member" as const,
+      allow: [...overwrite.allow.toArray()].sort(),
+      deny: [...overwrite.deny.toArray()].sort()
+    }))
+    .sort((left, right) =>
+      `${left.type}:${left.id}`.localeCompare(`${right.type}:${right.id}`)
+    );
+}
+
+async function getPermissionsSynced(
+  channel: any,
+  context: ToolContext
+): Promise<boolean | null> {
+  const parentId = "parentId" in channel ? channel.parentId : null;
+  if (!parentId || !channel.permissionOverwrites?.cache) return null;
+
+  try {
+    const parent = await context.client.channels.fetch(parentId);
+    if (!parent || !(parent as any).permissionOverwrites?.cache) return null;
+    return JSON.stringify(serializePermissionOverwrites(channel)) ===
+      JSON.stringify(serializePermissionOverwrites(parent));
+  } catch {
+    // Permission sync verification is best-effort and must not turn a
+    // successful edit into a failed tool call.
+    return null;
+  }
+}
+
+function serializeThread(thread: any) {
+  return {
+    guildId: thread.guildId ?? thread.guild?.id ?? null,
+    channelId: thread.id,
+    threadId: thread.id,
+    parentChannelId: thread.parentId ?? null,
+    name: thread.name,
+    type: ChannelType[thread.type] ?? String(thread.type),
+    ownerId: thread.ownerId ?? null,
+    archived: thread.archived ?? false,
+    locked: thread.locked ?? false,
+    invitable: thread.invitable ?? null,
+    autoArchiveDuration: thread.autoArchiveDuration ?? null,
+    rateLimitPerUserSeconds: thread.rateLimitPerUser ?? null,
+    messageCount: thread.messageCount ?? null,
+    memberCount: thread.memberCount ?? null,
+    createdAt: thread.createdAt?.toISOString?.() ?? null,
+    archiveTimestamp: thread.archiveTimestamp?.toISOString?.() ?? null,
+    url: thread.url ?? null
   };
 }
 
@@ -211,6 +279,69 @@ export async function createTextChannelHandler(
   }
 }
 
+export async function createVoiceChannelHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const parsed = CreateVoiceChannelSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return {
+        content: [{ type: "text", text: "Discord client not logged in." }],
+        isError: true
+      };
+    }
+
+    const guild = await context.client.guilds.fetch(parsed.guildId);
+    if (!guild) {
+      return {
+        content: [{
+          type: "text",
+          text: `Cannot find guild with ID: ${parsed.guildId}`
+        }],
+        isError: true
+      };
+    }
+
+    const parentId = resolveParentId(parsed);
+    const options: any = {
+      name: parsed.channelName,
+      type: ChannelType.GuildVoice
+    };
+    if (parentId !== undefined) options.parent = parentId;
+    if (parsed.position !== undefined) options.position = parsed.position;
+    if (parsed.bitrate !== undefined) options.bitrate = parsed.bitrate;
+    if (parsed.userLimit !== undefined) options.userLimit = parsed.userLimit;
+    if (parsed.rtcRegion !== undefined) options.rtcRegion = parsed.rtcRegion;
+    if (parsed.videoQualityMode !== undefined) {
+      options.videoQualityMode = parsed.videoQualityMode === "full"
+        ? VideoQualityMode.Full
+        : VideoQualityMode.Auto;
+    }
+    if (parsed.permissionOverwrites !== undefined) {
+      options.permissionOverwrites = toPermissionOverwrites(parsed.permissionOverwrites);
+    }
+    if (parsed.reason) options.reason = parsed.reason;
+
+    const channel = await guild.channels.create(options);
+    return structured(`Successfully created voice channel "${parsed.channelName}".`, {
+      guildId: guild.id,
+      channelId: channel.id,
+      parentId: channel.parentId,
+      categoryId: channel.parentId,
+      position: channel.position,
+      bitrate: "bitrate" in channel ? channel.bitrate : null,
+      userLimit: "userLimit" in channel ? channel.userLimit : null,
+      rtcRegion: "rtcRegion" in channel ? channel.rtcRegion : null,
+      videoQualityMode: "videoQualityMode" in channel
+        ? channel.videoQualityMode
+        : null
+    });
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
 export async function editChannelHandler(
   args: unknown,
   context: ToolContext
@@ -232,25 +363,254 @@ export async function editChannelHandler(
       };
     }
 
+    const parentSpecified =
+      parsed.parentId !== undefined || parsed.categoryId !== undefined;
+    const parentId = resolveParentId(parsed);
+    let edited: any = channel;
+    let lockPermissionsApplied: boolean | null = null;
+
+    if (parentSpecified && parsed.lockPermissions !== undefined) {
+      if (!("setParent" in channel) || typeof channel.setParent !== "function") {
+        return {
+          content: [{
+            type: "text",
+            text: `Channel cannot be moved with native permission locking: ${parsed.channelId}`
+          }],
+          isError: true
+        };
+      }
+      edited = await channel.setParent(parentId ?? null, {
+        lockPermissions: parsed.lockPermissions,
+        ...(parsed.reason ? { reason: parsed.reason } : {})
+      });
+      lockPermissionsApplied = parsed.lockPermissions;
+    }
+
     const update: any = {};
     if (parsed.name !== undefined) update.name = parsed.name;
     if (parsed.topic !== undefined) update.topic = parsed.topic;
-    const parentId = resolveParentId(parsed);
-    if (parentId !== undefined) update.parent = parentId;
+    if (parentSpecified && parsed.lockPermissions === undefined) {
+      update.parent = parentId;
+    }
     if (parsed.position !== undefined) update.position = parsed.position;
+    if (parsed.nsfw !== undefined) update.nsfw = parsed.nsfw;
+    if (parsed.rateLimitPerUserSeconds !== undefined) {
+      update.rateLimitPerUser = parsed.rateLimitPerUserSeconds;
+    }
+    if (parsed.bitrate !== undefined) update.bitrate = parsed.bitrate;
+    if (parsed.userLimit !== undefined) update.userLimit = parsed.userLimit;
+    if (parsed.rtcRegion !== undefined) update.rtcRegion = parsed.rtcRegion;
+    if (parsed.videoQualityMode !== undefined) {
+      update.videoQualityMode = parsed.videoQualityMode === "full"
+        ? VideoQualityMode.Full
+        : VideoQualityMode.Auto;
+    }
+    if (parsed.defaultAutoArchiveDuration !== undefined) {
+      update.defaultAutoArchiveDuration = parsed.defaultAutoArchiveDuration;
+    }
     if (parsed.permissionOverwrites !== undefined) {
       update.permissionOverwrites = toPermissionOverwrites(parsed.permissionOverwrites);
     }
-    if (parsed.reason) update.reason = parsed.reason;
+    if (Object.keys(update).length > 0) {
+      if (parsed.reason) update.reason = parsed.reason;
+      edited = await edited.edit(update);
+    }
 
-    const edited = await channel.edit(update);
+    const permissionsSynced = await getPermissionsSynced(edited, context);
     return structured("Successfully edited channel.", {
       guildId: edited.guild.id,
       channelId: edited.id,
       parentId: "parentId" in edited ? edited.parentId : null,
       categoryId: "parentId" in edited ? edited.parentId : null,
-      position: "position" in edited ? edited.position : null
+      position: "position" in edited ? edited.position : null,
+      lockPermissionsRequested: parsed.lockPermissions ?? null,
+      lockPermissionsApplied,
+      permissionsSynced,
+      nsfw: "nsfw" in edited ? edited.nsfw : null,
+      rateLimitPerUserSeconds: "rateLimitPerUser" in edited
+        ? edited.rateLimitPerUser
+        : null,
+      bitrate: "bitrate" in edited ? edited.bitrate : null,
+      userLimit: "userLimit" in edited ? edited.userLimit : null,
+      rtcRegion: "rtcRegion" in edited ? edited.rtcRegion : null,
+      videoQualityMode: "videoQualityMode" in edited
+        ? edited.videoQualityMode
+        : null,
+      defaultAutoArchiveDuration: "defaultAutoArchiveDuration" in edited
+        ? edited.defaultAutoArchiveDuration
+        : null
     });
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
+export async function getChannelInfoHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const { channelId } = GetChannelInfoSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return {
+        content: [{ type: "text", text: "Discord client not logged in." }],
+        isError: true
+      };
+    }
+
+    const channel = await context.client.channels.fetch(channelId);
+    if (
+      !channel ||
+      !("guild" in channel) ||
+      !("name" in channel) ||
+      !("permissionOverwrites" in channel) ||
+      (typeof channel.isThread === "function" && channel.isThread())
+    ) {
+      return {
+        content: [{
+          type: "text",
+          text: `Cannot find supported non-thread guild channel with ID: ${channelId}`
+        }],
+        isError: true
+      };
+    }
+
+    const parentId = "parentId" in channel ? channel.parentId : null;
+    const data = {
+      guildId: channel.guild.id,
+      channelId: channel.id,
+      name: channel.name,
+      type: ChannelType[channel.type] ?? String(channel.type),
+      parentId,
+      categoryId: parentId,
+      position: "position" in channel ? channel.position : null,
+      topic: "topic" in channel ? channel.topic : null,
+      nsfw: "nsfw" in channel ? channel.nsfw : null,
+      rateLimitPerUserSeconds: "rateLimitPerUser" in channel
+        ? channel.rateLimitPerUser
+        : null,
+      bitrate: "bitrate" in channel ? channel.bitrate : null,
+      userLimit: "userLimit" in channel ? channel.userLimit : null,
+      rtcRegion: "rtcRegion" in channel ? channel.rtcRegion : null,
+      videoQualityMode: "videoQualityMode" in channel
+        ? channel.videoQualityMode
+        : null,
+      defaultAutoArchiveDuration: "defaultAutoArchiveDuration" in channel
+        ? channel.defaultAutoArchiveDuration
+        : null,
+      permissionOverwrites: serializePermissionOverwrites(channel),
+      permissionsSynced: await getPermissionsSynced(channel, context)
+    };
+    return structured("Discord channel information.", data);
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
+export async function createThreadHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const parsed = CreateThreadSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return {
+        content: [{ type: "text", text: "Discord client not logged in." }],
+        isError: true
+      };
+    }
+
+    const parent = await context.client.channels.fetch(parsed.channelId);
+    if (
+      !parent ||
+      (parent.type !== ChannelType.GuildText &&
+        parent.type !== ChannelType.GuildAnnouncement) ||
+      !("threads" in parent)
+    ) {
+      return {
+        content: [{
+          type: "text",
+          text: `Cannot create a text thread in channel ID: ${parsed.channelId}`
+        }],
+        isError: true
+      };
+    }
+    if (parsed.type === "private" && parent.type !== ChannelType.GuildText) {
+      throw new Error("Private threads can only be created in guild text channels.");
+    }
+
+    const options: any = { name: parsed.name };
+    if (parsed.startMessageId !== undefined) {
+      options.startMessage = parsed.startMessageId;
+    }
+    if (parsed.type === "private") {
+      options.type = ChannelType.PrivateThread;
+    } else if (parsed.type === "public") {
+      options.type = parent.type === ChannelType.GuildAnnouncement
+        ? ChannelType.AnnouncementThread
+        : ChannelType.PublicThread;
+    }
+    if (parsed.autoArchiveDuration !== undefined) {
+      options.autoArchiveDuration = parsed.autoArchiveDuration;
+    }
+    if (parsed.rateLimitPerUserSeconds !== undefined) {
+      options.rateLimitPerUser = parsed.rateLimitPerUserSeconds;
+    }
+    if (parsed.invitable !== undefined) options.invitable = parsed.invitable;
+    if (parsed.reason) options.reason = parsed.reason;
+
+    const thread = await parent.threads.create(options);
+    return structured("Thread created successfully.", serializeThread(thread));
+  } catch (error) {
+    return handleDiscordError(error);
+  }
+}
+
+export async function editThreadHandler(
+  args: unknown,
+  context: ToolContext
+): Promise<ToolResponse> {
+  const parsed = EditThreadSchema.parse(args);
+  try {
+    if (!context.client.isReady()) {
+      return {
+        content: [{ type: "text", text: "Discord client not logged in." }],
+        isError: true
+      };
+    }
+
+    const thread = await context.client.channels.fetch(parsed.threadId);
+    if (!thread || !thread.isThread()) {
+      return {
+        content: [{
+          type: "text",
+          text: `Cannot find thread with ID: ${parsed.threadId}`
+        }],
+        isError: true
+      };
+    }
+    if (
+      parsed.invitable !== undefined &&
+      thread.type !== ChannelType.PrivateThread
+    ) {
+      throw new Error("invitable can only be changed on private threads.");
+    }
+
+    const update: any = {};
+    if (parsed.name !== undefined) update.name = parsed.name;
+    if (parsed.archived !== undefined) update.archived = parsed.archived;
+    if (parsed.locked !== undefined) update.locked = parsed.locked;
+    if (parsed.autoArchiveDuration !== undefined) {
+      update.autoArchiveDuration = parsed.autoArchiveDuration;
+    }
+    if (parsed.rateLimitPerUserSeconds !== undefined) {
+      update.rateLimitPerUser = parsed.rateLimitPerUserSeconds;
+    }
+    if (parsed.invitable !== undefined) update.invitable = parsed.invitable;
+    if (parsed.reason) update.reason = parsed.reason;
+
+    const edited = await thread.edit(update);
+    return structured("Thread edited successfully.", serializeThread(edited));
   } catch (error) {
     return handleDiscordError(error);
   }
@@ -401,7 +761,7 @@ export async function readMessagesHandler(
   args: unknown, 
   context: ToolContext
 ): Promise<ToolResponse> {
-  const { channelId, limit } = ReadMessagesSchema.parse(args);
+  const { channelId, limit, before, after, around } = ReadMessagesSchema.parse(args);
   try {
     if (!context.client.isReady()) {
       return {
@@ -427,7 +787,12 @@ export async function readMessagesHandler(
     }
 
     // Fetch messages
-    const messages = await channel.messages.fetch({ limit });
+    const messages = await channel.messages.fetch({
+      limit,
+      ...(before ? { before } : {}),
+      ...(after ? { after } : {}),
+      ...(around ? { around } : {})
+    });
     
     if (messages.size === 0) {
       return {
@@ -474,6 +839,11 @@ export async function readMessagesHandler(
 
     const data = {
       channelId,
+      cursor: {
+        before: before ?? null,
+        after: after ?? null,
+        around: around ?? null
+      },
       messageCount: formattedMessages.length,
       messages: formattedMessages
     };
