@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const expectedVersion = "2.2.0";
-const publishedImageVersion = "2.1.0";
+const expectedVersion = "2.2.1";
 
 test("release metadata, documentation, and Docker publishing stay aligned", async () => {
   const [
@@ -28,16 +27,16 @@ test("release metadata, documentation, and Docker publishing stay aligned", asyn
   assert.equal(lock.version, expectedVersion);
   assert.equal(lock.packages[""].version, expectedVersion);
 
-  assert.equal(readme.includes(`unreleased **${expectedVersion}**`), true);
-  assert.equal(readme.includes(`skuldgerry/discord-mcp:${publishedImageVersion}`), true);
-  assert.equal(readme.includes(`skuldgerry/discord-mcp:${expectedVersion}`), false);
+  assert.equal(readme.includes(`release is **${expectedVersion}**`), true);
+  assert.equal(readme.includes(`skuldgerry/discord-mcp:${expectedVersion}`), true);
   assert.equal(readme.includes("skuldgerry/discord-mcp:2.0.0"), false);
-  assert.equal(changelog.includes(`Target version: **${expectedVersion}**`), true);
+  assert.equal(changelog.includes(`## [${expectedVersion}] - 2026-10-13`), true);
   assert.equal(versioning.includes("Semantic Versioning"), true);
 
   assert.equal(workflow.includes("IMAGE_NAME: skuldgerry/discord-mcp"), true);
   assert.equal(
-    workflow.includes("push: ${{ startsWith(github.ref, 'refs/tags/v') }}"),
+    workflow.includes("push: false"),
     true,
   );
+  assert.equal(workflow.includes("docker/login-action"), false);
 });

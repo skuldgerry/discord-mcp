@@ -36,7 +36,7 @@ Increment `MINOR` for backward-compatible capabilities, including:
 - adding a transport or configuration option without changing existing
   behavior.
 
-Versions 2.1.0 and the planned 2.2.0 are minor releases because they add tools
+Versions 2.1.0 and 2.2.0 are minor releases because they add tools
 and optional capabilities while preserving existing tool names and valid
 inputs.
 
@@ -85,16 +85,16 @@ tag are created together only during the authorized release.
 7. Commit the release and create the annotated Git tag
    `vMAJOR.MINOR.PATCH`.
 8. Push the commit and tag only after explicit approval.
-9. Verify the immutable Docker image, MCP health endpoint, and advertised tool
-   count before allowing the workflow to update floating tags.
+9. Build the exact release commit on the dedicated remote builder. Verify tests,
+   the MCP health endpoint, protocol initialization, tool catalog, and image scan.
+10. Publish the immutable image tag first, then `latest`, and verify both digests.
+    GitHub container CI only builds; it never publishes images or Docker Hub text.
 
 ## Docker tags
 
-Stable Git tags publish:
+Approved stable releases publish from the dedicated remote builder:
 
 - `MAJOR.MINOR.PATCH` — immutable deployment tag;
-- `MAJOR.MINOR` — latest compatible patch in that minor line;
-- `MAJOR` — latest compatible minor in that major line;
 - `latest` — latest validated stable release.
 
 Never replace or rebuild an existing immutable `MAJOR.MINOR.PATCH` tag. Publish a

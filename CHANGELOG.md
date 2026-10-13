@@ -5,7 +5,15 @@ Releases follow the policy in [VERSIONING.md](VERSIONING.md).
 
 ## [Unreleased]
 
-Target version: **2.2.0**
+## [2.2.1] - 2026-10-13
+
+### Changed
+
+- Refresh runtime dependencies, lockfile, and Node 24 container base.
+- Align release documentation with the already-published 2.2.0 image.
+- Keep GitHub container CI build-only; publish approved releases from the dedicated remote builder.
+
+## [2.2.0] - 2026-07-28
 
 ### Added
 
