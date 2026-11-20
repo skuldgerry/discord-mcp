@@ -41,7 +41,7 @@ export class DiscordMCPServer {
                     return {
                         content: [{
                                 type: "text",
-                                text: `Invalid arguments: ${caught.errors
+                                text: `Invalid arguments: ${caught.issues
                                     .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
                                     .join(", ")}`,
                             }],
