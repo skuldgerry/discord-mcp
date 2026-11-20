@@ -74,6 +74,12 @@ test("schema boundaries retain defaults, nullability, integer limits and strict 
   }).success, true);
 });
 
+test("oversized constrained collections reject before creating per-item validation errors", () => {
+  const result = AllowedMentionsSchema.safeParse({ users: Array(10_000).fill("invalid") });
+  assert.equal(result.success, false);
+  assert.equal(result.error.issues.length, 1);
+  assert.equal(result.error.issues[0].code, "too_big");
+});
 test("HTTP MCP preserves catalog, mocked reads and actionable nested Zod errors", async t => {
   const fixture = await startHttp(t);
   const client = await connect(t, fixture.url);
