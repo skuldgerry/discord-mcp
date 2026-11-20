@@ -5,6 +5,21 @@ Releases follow the policy in [VERSIONING.md](VERSIONING.md).
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-11-20
+
+### Security
+
+- Update the MCP SDK to 1.32.0, Zod to 4.6.7, and the HTTP dependencies to
+  Undici 6.29.1, fast-uri 3.1.9, body-parser 2.4.0, Hono 4.13.19, and
+  @hono/node-server 2.1.11. The lockfile also includes qs 6.17.1 and the
+  development dependency diff 4.0.4.
+
+### Fixed
+
+- Preserve nested tool argument errors with Zod 4.
+- Add regression coverage for schema validation, HTTP and stdio, including
+  the SDK client's same-origin redirect policy.
+
 ## [2.2.1] - 2026-10-13
 
 ### Changed

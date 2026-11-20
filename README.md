@@ -63,18 +63,18 @@ MCP-Discord provides the following Discord-related functionalities:
 
 - Node.js 22 or newer
 - Discord API v10 through `discord.js` 14.27
-- Model Context Protocol through `@modelcontextprotocol/sdk` 1.29, including the stable 2025-11-25 protocol revision
+- Model Context Protocol through `@modelcontextprotocol/sdk` 1.32, including the stable 2025-11-25 protocol revision
 - Stateless Streamable HTTP and stdio transports share the same handler registry
 
 ## Release and Versioning
 
-The current enhanced-fork release is **2.2.1**. Version 2.2.0 was published on
-2026-07-28; 2.2.1 refreshes dependencies and container packaging.
+The current enhanced-fork release is **2.2.2**. It updates runtime dependencies
+and preserves descriptive tool validation errors with Zod 4.
 
 - Release history: [CHANGELOG.md](CHANGELOG.md)
 - Version selection and release process: [VERSIONING.md](VERSIONING.md)
 
-Use the immutable `skuldgerry/discord-mcp:2.2.1` tag for deployments. The `latest`
+Use the immutable `skuldgerry/discord-mcp:2.2.2` tag for deployments. The `latest`
 tag is updated only after validation on the dedicated remote builder.
 
 ## Prerequisites
@@ -146,20 +146,20 @@ This enhanced fork is not published under the `mcp-discord` package name. Runnin
 
 ### Installing via Docker
 
-The public Docker image is available as `skuldgerry/discord-mcp:2.2.1`. You can pull it or build the same tag locally:
+The public Docker image is available as `skuldgerry/discord-mcp:2.2.2`. You can pull it or build the same tag locally:
 
 ```bash
 # Pull the published image
-docker pull skuldgerry/discord-mcp:2.2.1
+docker pull skuldgerry/discord-mcp:2.2.2
 
 # Or build it locally
-docker build -t skuldgerry/discord-mcp:2.2.1 .
+docker build -t skuldgerry/discord-mcp:2.2.2 .
 
 # Run locally with the Discord token supplied only at runtime
 docker run --rm --name mcp-discord \
   -e DISCORD_TOKEN=your_discord_bot_token \
   -p 127.0.0.1:8080:8080 \
-  skuldgerry/discord-mcp:2.2.1
+  skuldgerry/discord-mcp:2.2.2
 ```
 
 **Features:**
@@ -238,7 +238,7 @@ This configuration works with command-based clients and passes the token from th
                 "--no-healthcheck",
                 "-e",
                 "DISCORD_TOKEN",
-                "skuldgerry/discord-mcp:2.2.1",
+                "skuldgerry/discord-mcp:2.2.2",
                 "--transport",
                 "stdio"
             ],
@@ -459,4 +459,4 @@ This fork includes extensive enhancements added with AI assistance:
 - Improved error handling and type safety
 - Multi-stage Docker build optimization
 
-All modifications use Discord API v10 through `discord.js` 14.27 and Model Context Protocol through `@modelcontextprotocol/sdk` 1.29.
+All modifications use Discord API v10 through `discord.js` 14.27 and Model Context Protocol through `@modelcontextprotocol/sdk` 1.32.

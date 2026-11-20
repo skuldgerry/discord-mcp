@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const expectedVersion = "2.2.1";
+const expectedVersion = "2.2.2";
 
 test("release metadata, documentation, and Docker publishing stay aligned", async () => {
   const [
@@ -30,7 +30,7 @@ test("release metadata, documentation, and Docker publishing stay aligned", asyn
   assert.equal(readme.includes(`release is **${expectedVersion}**`), true);
   assert.equal(readme.includes(`skuldgerry/discord-mcp:${expectedVersion}`), true);
   assert.equal(readme.includes("skuldgerry/discord-mcp:2.0.0"), false);
-  assert.equal(changelog.includes(`## [${expectedVersion}] - 2026-10-13`), true);
+  assert.equal(changelog.includes(`## [${expectedVersion}] - 2026-11-20`), true);
   assert.equal(versioning.includes("Semantic Versioning"), true);
 
   assert.equal(workflow.includes("IMAGE_NAME: skuldgerry/discord-mcp"), true);
